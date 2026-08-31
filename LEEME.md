@@ -51,7 +51,7 @@ Si mueves la carpeta del proyecto, vuelve a ejecutar ese script.
 |---|---|
 | **Dashboard** | Contadores (descargas, conversiones, solo audio, errores), acciones rápidas, estado de FFmpeg/yt-dlp y actividad reciente. |
 | **Descargar vídeos** | Pega una o varias URLs (una por línea), elige calidad o «solo audio (MP3)», carpeta destino, y descarga con miniatura y barra de progreso. |
-| **Convertir archivos** | Añade uno o varios archivos, elige tipo (Vídeo/Audio) y formato de salida (MP4, MKV, WebM, AVI, MOV, GIF / MP3, M4A, WAV, FLAC, OGG) y carpeta destino. |
+| **Convertir archivos** | Añade uno o varios archivos y elige tipo: **Vídeo** (MP4, MKV, WebM, AVI, MOV, GIF), **Audio** (MP3, M4A, WAV, FLAC, OGG) o **Imagen** (JPEG, PNG, WebP, TIFF, BMP), con opción de redimensionar. Las imágenes admiten **RAW de cámara**: CR2/CR3 (Canon), NEF (Nikon), ARW (Sony), RAF (Fujifilm), RW2 (Panasonic), ORF (Olympus/OM System) y más, vía `rawpy`/LibRaw. |
 | **Historial** | Tabla con todas las descargas y conversiones; doble clic abre la carpeta. |
 | **Configuración** | Carpetas por defecto, calidad por defecto, ruta manual de FFmpeg. |
 
@@ -68,7 +68,8 @@ app/
   services/
     ffmpeg.py               Localiza FFmpeg/FFprobe y lo lanza sin consola
     descargas.py            Envoltorio de yt-dlp + hilo de descarga
-    conversion.py           Presets de formato + hilo de conversión FFmpeg
+    conversion.py           Presets de formato + hilo de conversión FFmpeg (vídeo/audio)
+    imagenes.py             Conversión de imágenes y RAW de cámara (rawpy + Pillow)
   widgets/                   sidebar, header, tarjeta/panel, chip, tabla, campos, iconos
   ui/                        dashboard / descargas / convertir / historial / configuración / ventana
 generar_icono.py            Genera cat_icon.ico (Pillow)

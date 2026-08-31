@@ -10,7 +10,7 @@ from PySide6.QtWidgets import (
 )
 
 from app import config
-from app.services import descargas, ffmpeg
+from app.services import descargas, ffmpeg, imagenes
 from app.widgets.chip import Chip
 from app.widgets.tarjeta import Panel, TarjetaKPI
 
@@ -83,9 +83,11 @@ class DashboardPage(QWidget):
         self.lbl_ytdlp = QLabel()
         self.lbl_js = QLabel()
         self.lbl_js.setWordWrap(True)
+        self.lbl_raw = QLabel()
+        self.lbl_raw.setWordWrap(True)
         self.lbl_carpetas = QLabel()
         self.lbl_carpetas.setWordWrap(True)
-        for w in (self.lbl_ytdlp, self.lbl_js, self.lbl_carpetas):
+        for w in (self.lbl_ytdlp, self.lbl_js, self.lbl_raw, self.lbl_carpetas):
             w.setStyleSheet("color:#9aa6bc;font-size:11px;")
             estado.layout_panel.addWidget(w)
         estado.layout_panel.addStretch()
@@ -149,6 +151,12 @@ class DashboardPage(QWidget):
         else:
             self.lbl_js.setText("Motor JS: falta — YouTube no funcionará. Instala Deno (winget install DenoLand.Deno)")
             self.lbl_js.setStyleSheet("color:#fbbf24;font-size:11px;")
+        if imagenes.raw_disponible():
+            self.lbl_raw.setText("RAW de cámara: rawpy OK (CR2/CR3, NEF, ARW, RAF, RW2, ORF…)")
+            self.lbl_raw.setStyleSheet("color:#86efac;font-size:11px;")
+        else:
+            self.lbl_raw.setText("RAW de cámara: falta rawpy (pip install rawpy)")
+            self.lbl_raw.setStyleSheet("color:#fbbf24;font-size:11px;")
         s = config.cargar_settings()
         self.lbl_carpetas.setText(
             f"Descargas → {s['carpeta_descargas']}\nConversiones → {s['carpeta_conversiones']}"

@@ -17,7 +17,7 @@ from PySide6.QtWidgets import (
 )
 
 from app import config
-from app.services import conversion, ffmpeg
+from app.services import conversion, ffmpeg, imagenes
 from app.widgets.campos import SelectorCarpeta
 from app.widgets.tarjeta import Panel
 
@@ -28,6 +28,7 @@ class ConvertirPage(QWidget):
     def __init__(self):
         super().__init__()
         self.worker = None
+        self._formato_actual = ""
         s = config.cargar_settings()
 
         scroll = QScrollArea()
@@ -41,14 +42,17 @@ class ConvertirPage(QWidget):
         cabecera = QLabel("Convertir archivos")
         cabecera.setStyleSheet("font-size:20px;font-weight:800;")
         layout.addWidget(cabecera)
-        sub = QLabel("Convierte vídeo y audio entre formatos con FFmpeg. Puedes añadir varios archivos.")
+        sub = QLabel(
+            "Convierte vídeo y audio (FFmpeg) o imágenes, incluidas RAW de cámara "
+            "(CR2/CR3, NEF, ARW, RAF, RW2, ORF…). Puedes añadir varios archivos."
+        )
+        sub.setWordWrap(True)
         sub.setStyleSheet("color:#8b97ad;font-size:11px;")
         layout.addWidget(sub)
 
-        self.aviso = QLabel("⚠ FFmpeg no está instalado. Instálalo para poder convertir (ver Configuración).")
+        self.aviso = QLabel("⚠ FFmpeg no está instalado. Necesario para vídeo y audio (ver Configuración).")
         self.aviso.setWordWrap(True)
         self.aviso.setStyleSheet("color:#fbbf24;font-size:11px;")
-        self.aviso.setVisible(not ffmpeg.disponible())
         layout.addWidget(self.aviso)
 
         # --- Archivos ---
@@ -79,7 +83,7 @@ class ConvertirPage(QWidget):
         fila_tipo.setSpacing(10)
         fila_tipo.addWidget(QLabel("Tipo:"))
         self.combo_tipo = QComboBox()
-        self.combo_tipo.addItems(["Vídeo", "Audio"])
+        self.combo_tipo.addItems(["Vídeo", "Audio", "Imagen"])
         self.combo_tipo.setFixedWidth(140)
         self.combo_tipo.currentTextChanged.connect(self._recargar_formatos)
         fila_tipo.addWidget(self.combo_tipo)
@@ -90,6 +94,20 @@ class ConvertirPage(QWidget):
         fila_tipo.addWidget(self.combo_formato)
         fila_tipo.addStretch()
         salida.layout_panel.addLayout(fila_tipo)
+
+        # Fila de tamaño, solo para imágenes
+        self.fila_tam = QWidget()
+        lay_tam = QHBoxLayout(self.fila_tam)
+        lay_tam.setContentsMargins(0, 0, 0, 0)
+        lay_tam.setSpacing(10)
+        lay_tam.addWidget(QLabel("Tamaño:"))
+        self.combo_tam = QComboBox()
+        self.combo_tam.addItems(imagenes.LADOS_MAX)
+        self.combo_tam.setFixedWidth(180)
+        self.combo_tam.setToolTip("Reduce la imagen si su lado mayor supera ese valor. No amplía.")
+        lay_tam.addWidget(self.combo_tam)
+        lay_tam.addStretch()
+        salida.layout_panel.addWidget(self.fila_tam)
 
         salida.layout_panel.addWidget(QLabel("Carpeta de destino:"))
         self.sel_carpeta = SelectorCarpeta(s["carpeta_conversiones"], "Carpeta de conversiones")
@@ -132,9 +150,14 @@ class ConvertirPage(QWidget):
 
     # -- lista de archivos -----------------------------------------------
 
+    def _filtro_archivos(self):
+        if self.combo_tipo.currentText() == "Imagen":
+            return imagenes.FILTRO_ARCHIVOS
+        return conversion.FILTRO_ARCHIVOS
+
     def _añadir(self):
         rutas, _ = QFileDialog.getOpenFileNames(
-            self, "Elegir archivos", "", conversion.FILTRO_ARCHIVOS
+            self, "Elegir archivos", "", self._filtro_archivos()
         )
         existentes = {self.lista.item(i).text() for i in range(self.lista.count())}
         for r in rutas:
@@ -147,29 +170,56 @@ class ConvertirPage(QWidget):
 
     def _recargar_formatos(self, tipo):
         self.combo_formato.clear()
-        tabla = conversion.VIDEO if tipo == "Vídeo" else conversion.AUDIO
-        self.combo_formato.addItems(list(tabla.keys()))
+        if tipo == "Imagen":
+            self.combo_formato.addItems(list(imagenes.SALIDA.keys()))
+        elif tipo == "Audio":
+            self.combo_formato.addItems(list(conversion.AUDIO.keys()))
+        else:
+            self.combo_formato.addItems(list(conversion.VIDEO.keys()))
+        es_imagen = tipo == "Imagen"
+        self.fila_tam.setVisible(es_imagen)
+        self.aviso.setVisible(not es_imagen and not ffmpeg.disponible())
 
     # -- conversión -----------------------------------------------------
 
     def _iniciar(self):
-        if not ffmpeg.disponible():
-            QMessageBox.critical(self, "Falta FFmpeg", "Instala FFmpeg para convertir (ver Configuración).")
-            return
         entradas = [self.lista.item(i).text() for i in range(self.lista.count())]
         entradas = [e for e in entradas if os.path.isfile(e)]
         if not entradas:
             QMessageBox.warning(self, "Sin archivos", "Añade al menos un archivo a la lista.")
             return
+
+        tipo = self.combo_tipo.currentText()
         carpeta = self.sel_carpeta.valor()
         config.guardar_settings({"carpeta_conversiones": carpeta})
+        self._formato_actual = self.combo_formato.currentText()
+
+        if tipo == "Imagen":
+            if not imagenes.pillow_disponible():
+                QMessageBox.critical(self, "Falta Pillow", "Instala Pillow para convertir imágenes.")
+                return
+            if any(imagenes.es_raw(e) for e in entradas) and not imagenes.raw_disponible():
+                QMessageBox.critical(
+                    self, "Falta rawpy",
+                    "Para abrir archivos RAW (CR2/CR3, NEF, ARW…) hace falta rawpy.\n\n"
+                    "Instálalo con:  pip install rawpy",
+                )
+                return
+            lado = imagenes.lado_a_pixeles(self.combo_tam.currentText())
+            self.worker = imagenes.ConversionImagenWorker(
+                entradas, carpeta, self._formato_actual, lado_max=lado
+            )
+        else:
+            if not ffmpeg.disponible():
+                QMessageBox.critical(
+                    self, "Falta FFmpeg", "Instala FFmpeg para convertir vídeo o audio (ver Configuración)."
+                )
+                return
+            self.worker = conversion.ConversionWorker(entradas, carpeta, self._formato_actual)
 
         self.btn_convertir.setEnabled(False)
         self.btn_cancelar.setEnabled(True)
         self.barra.setValue(0)
-        self._formato_actual = self.combo_formato.currentText()
-
-        self.worker = conversion.ConversionWorker(entradas, carpeta, self._formato_actual)
         self.worker.empieza_uno.connect(self._al_empezar_uno)
         self.worker.progreso.connect(self._al_progreso)
         self.worker.uno_terminado.connect(self._al_terminar_uno)
@@ -189,6 +239,8 @@ class ConvertirPage(QWidget):
 
     def _al_progreso(self, pct, texto):
         self.barra.setValue(pct)
+        if texto:
+            self.lbl_sub.setText(texto)
 
     def _al_terminar_uno(self, salida, ok):
         config.agregar_historial(
