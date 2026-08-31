@@ -14,6 +14,32 @@ except ImportError:
 
 CALIDADES = ["Mejor calidad disponible", "1080p", "720p", "480p", "360p"]
 
+# Navegadores de los que yt-dlp puede leer cookies para saltarse el
+# "Sign in to confirm you're not a bot" de YouTube. Clave = etiqueta visible,
+# valor = nombre que espera yt-dlp ("" = no usar cookies).
+NAVEGADORES_COOKIES = {
+    "Ninguno": "",
+    "Chrome": "chrome",
+    "Edge": "edge",
+    "Firefox": "firefox",
+    "Brave": "brave",
+    "Opera": "opera",
+    "Vivaldi": "vivaldi",
+    "Chromium": "chromium",
+}
+
+_MSG_BOT = ("sign in to confirm", "confirm you're not a bot", "confirm you are not a bot")
+
+
+def es_error_de_cookies(mensaje):
+    m = (mensaje or "").lower()
+    return any(t in m for t in _MSG_BOT)
+
+
+def _aplicar_cookies(opciones, navegador):
+    if navegador:
+        opciones["cookiesfrombrowser"] = (navegador,)
+
 
 def yt_dlp_disponible():
     return yt_dlp is not None
@@ -47,12 +73,13 @@ def formato_para(calidad, con_ffmpeg):
     return mapa.get(calidad, "best")
 
 
-def info_previa(url):
+def info_previa(url, navegador=""):
     """Devuelve (titulo, bytes_miniatura|None) sin descargar el vídeo."""
     if yt_dlp is None:
         return None, None
     try:
         opciones = {"quiet": True, "skip_download": True, "noplaylist": True}
+        _aplicar_cookies(opciones, navegador)
         with yt_dlp.YoutubeDL(opciones) as ydl:
             info = ydl.extract_info(url, download=False)
         titulo = info.get("title", "Vídeo")
@@ -77,12 +104,13 @@ class DescargaWorker(QThread):
     uno_terminado = Signal(str, bool)  # titulo, ok
     todo_terminado = Signal(int, int, list)  # ok, total, errores [(url, msg)]
 
-    def __init__(self, urls, carpeta, calidad, solo_audio, parent=None):
+    def __init__(self, urls, carpeta, calidad, solo_audio, navegador_cookies="", parent=None):
         super().__init__(parent)
         self.urls = urls
         self.carpeta = carpeta
         self.calidad = calidad
         self.solo_audio = solo_audio
+        self.navegador_cookies = navegador_cookies
         self._cancelar = False
 
     def cancelar(self):
@@ -114,7 +142,7 @@ class DescargaWorker(QThread):
             if self._cancelar:
                 break
             self.empieza_uno.emit(i, total, url)
-            titulo_prev, miniatura = info_previa(url)
+            titulo_prev, miniatura = info_previa(url, self.navegador_cookies)
             self.info_lista.emit(f"[{i}/{total}] {titulo_prev or 'Vídeo'}", miniatura or b"")
             if self._cancelar:
                 break
@@ -130,6 +158,7 @@ class DescargaWorker(QThread):
             ff = ffmpeg.ruta_ffmpeg()
             if ff:
                 opciones["ffmpeg_location"] = ff
+            _aplicar_cookies(opciones, self.navegador_cookies)
 
             if self.solo_audio:
                 opciones["format"] = "bestaudio/best"

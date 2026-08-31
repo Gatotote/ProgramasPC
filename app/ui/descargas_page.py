@@ -72,6 +72,25 @@ class DescargasPage(QWidget):
         self.chk_audio.setChecked(bool(s["solo_audio"]))
         opciones.layout_panel.addWidget(self.chk_audio)
 
+        fila_ck = QHBoxLayout()
+        fila_ck.setSpacing(10)
+        fila_ck.addWidget(QLabel("Cookies de:"))
+        self.combo_cookies = QComboBox()
+        self.combo_cookies.addItems(list(descargas.NAVEGADORES_COOKIES.keys()))
+        for etiqueta, valor in descargas.NAVEGADORES_COOKIES.items():
+            if valor == s.get("navegador_cookies", ""):
+                self.combo_cookies.setCurrentText(etiqueta)
+                break
+        self.combo_cookies.setFixedWidth(160)
+        self.combo_cookies.setToolTip(
+            "Si YouTube pide «confirma que no eres un bot», elige el navegador\n"
+            "donde tienes la sesión iniciada para que yt-dlp use sus cookies."
+        )
+        fila_ck.addWidget(self.combo_cookies)
+        fila_ck.addWidget(QLabel("(para el aviso de YouTube «no soy un bot»)"))
+        fila_ck.addStretch()
+        opciones.layout_panel.addLayout(fila_ck)
+
         self.aviso_ffmpeg = QLabel(
             "⚠ FFmpeg no encontrado: se usará una sola calidad combinada para no "
             "dejar vídeo y audio en archivos separados. El MP3 tampoco estará disponible."
@@ -156,10 +175,12 @@ class DescargasPage(QWidget):
             return
 
         carpeta = self.sel_carpeta.valor()
+        navegador = descargas.NAVEGADORES_COOKIES.get(self.combo_cookies.currentText(), "")
         config.guardar_settings({
             "carpeta_descargas": carpeta,
             "calidad": self.combo_calidad.currentText(),
             "solo_audio": self.chk_audio.isChecked(),
+            "navegador_cookies": navegador,
         })
 
         self._poner_en_marcha(True)
@@ -169,7 +190,8 @@ class DescargasPage(QWidget):
         self._restablecer_miniatura()
 
         self.worker = descargas.DescargaWorker(
-            urls, carpeta, self.combo_calidad.currentText(), self.chk_audio.isChecked()
+            urls, carpeta, self.combo_calidad.currentText(), self.chk_audio.isChecked(),
+            navegador_cookies=navegador,
         )
         self.worker.empieza_uno.connect(self._al_empezar_uno)
         self.worker.info_lista.connect(self._al_recibir_info)
@@ -234,7 +256,22 @@ class DescargasPage(QWidget):
             return
         if errores:
             det = "\n".join(f"• {u[:60]}: {m}" for u, m in errores[:5])
-            QMessageBox.warning(self, "Terminó con errores", f"{ok} de {total} correctos.\n\n{det}")
+            extra = ""
+            if any(descargas.es_error_de_cookies(m) for _, m in errores):
+                if self.combo_cookies.currentText() == "Ninguno":
+                    extra = (
+                        "\n\nYouTube pide iniciar sesión. En «Cookies de:» elige el "
+                        "navegador donde tengas tu cuenta abierta y vuelve a intentarlo."
+                    )
+                else:
+                    extra = (
+                        "\n\nNo se pudieron leer las cookies de "
+                        f"{self.combo_cookies.currentText()}. Cierra ese navegador por "
+                        "completo (o prueba con otro) y reintenta."
+                    )
+            QMessageBox.warning(
+                self, "Terminó con errores", f"{ok} de {total} correctos.\n\n{det}{extra}"
+            )
         else:
             QMessageBox.information(self, "Listo", f"Se descargaron {ok} de {total} vídeo(s).")
 

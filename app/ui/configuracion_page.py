@@ -56,6 +56,26 @@ class ConfiguracionPage(QWidget):
         self.chk_audio = QCheckBox("Descargar solo audio (MP3) por defecto")
         self.chk_audio.setChecked(bool(s["solo_audio"]))
         gen.layout_panel.addWidget(self.chk_audio)
+
+        fila_ck = QHBoxLayout()
+        fila_ck.addWidget(QLabel("Cookies del navegador:"))
+        self.combo_cookies = QComboBox()
+        self.combo_cookies.addItems(list(descargas.NAVEGADORES_COOKIES.keys()))
+        for etiqueta, valor in descargas.NAVEGADORES_COOKIES.items():
+            if valor == s.get("navegador_cookies", ""):
+                self.combo_cookies.setCurrentText(etiqueta)
+                break
+        self.combo_cookies.setFixedWidth(200)
+        fila_ck.addWidget(self.combo_cookies)
+        fila_ck.addStretch()
+        gen.layout_panel.addLayout(fila_ck)
+        nota_ck = QLabel(
+            "Para el aviso de YouTube «confirma que no eres un bot»: yt-dlp usará las "
+            "cookies de ese navegador (debes tener la sesión iniciada allí)."
+        )
+        nota_ck.setWordWrap(True)
+        nota_ck.setStyleSheet("color:#8b97ad;font-size:11px;")
+        gen.layout_panel.addWidget(nota_ck)
         layout.addWidget(gen)
 
         # --- FFmpeg ---
@@ -114,6 +134,9 @@ class ConfiguracionPage(QWidget):
             "calidad": self.combo_calidad.currentText(),
             "solo_audio": self.chk_audio.isChecked(),
             "ffmpeg_manual": self.linea_ffmpeg.text().strip(),
+            "navegador_cookies": descargas.NAVEGADORES_COOKIES.get(
+                self.combo_cookies.currentText(), ""
+            ),
         })
         self._pintar_estado_ffmpeg()
         self.guardado.emit()

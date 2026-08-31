@@ -24,7 +24,8 @@ DEFAULTS = {
     "carpeta_conversiones": _DESCARGAS_POR_DEFECTO,
     "calidad": "Mejor calidad disponible",
     "solo_audio": False,
-    "ffmpeg_manual": "",  # ruta a ffmpeg.exe si no está en el PATH
+    "ffmpeg_manual": "",       # ruta a ffmpeg.exe si no está en el PATH
+    "navegador_cookies": "",   # navegador del que leer cookies (YouTube "no soy un bot")
 }
 
 
