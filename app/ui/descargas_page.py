@@ -1,5 +1,5 @@
 from PySide6.QtCore import Qt, Signal
-from PySide6.QtGui import QPixmap
+from PySide6.QtGui import QGuiApplication, QPixmap
 from PySide6.QtWidgets import (
     QCheckBox,
     QComboBox,
@@ -48,6 +48,22 @@ class DescargasPage(QWidget):
 
         # --- Origen ---
         origen = Panel("Origen", borde="#3b82f6", acento="#93c5fd")
+        fila_origen = QHBoxLayout()
+        fila_origen.setContentsMargins(0, 0, 0, 0)
+        fila_origen.addStretch()
+        self.btn_pegar = QPushButton("Pegar enlace")
+        self.btn_pegar.setObjectName("ghost")
+        self.btn_pegar.setCursor(Qt.PointingHandCursor)
+        self.btn_pegar.setToolTip("Borra lo escrito y pega el enlace del portapapeles")
+        self.btn_pegar.clicked.connect(self._pegar_enlace)
+        self.btn_limpiar = QPushButton("Limpiar")
+        self.btn_limpiar.setObjectName("ghost")
+        self.btn_limpiar.setCursor(Qt.PointingHandCursor)
+        self.btn_limpiar.clicked.connect(lambda: self.txt_urls.clear())
+        fila_origen.addWidget(self.btn_pegar)
+        fila_origen.addWidget(self.btn_limpiar)
+        origen.layout_panel.addLayout(fila_origen)
+
         self.txt_urls = QPlainTextEdit()
         self.txt_urls.setPlaceholderText("https://…\nhttps://…")
         self.txt_urls.setFixedHeight(96)
@@ -154,6 +170,14 @@ class DescargasPage(QWidget):
         raiz.addWidget(scroll)
 
     # -- lógica -------------------------------------------------------------
+
+    def _pegar_enlace(self):
+        texto = (QGuiApplication.clipboard().text() or "").strip()
+        if not texto:
+            self.lbl_sub.setText("El portapapeles está vacío.")
+            return
+        self.txt_urls.setPlainText(texto)
+        self.txt_urls.setFocus()
 
     def _iniciar(self):
         if not descargas.yt_dlp_disponible():

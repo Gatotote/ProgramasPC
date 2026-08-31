@@ -13,7 +13,10 @@ RAIZ_PROYECTO = Path(__file__).resolve().parent.parent
 RUTA_ICONO = RAIZ_PROYECTO / "cat_icon.ico"
 RUTA_TEMA = RAIZ_PROYECTO / "app" / "resources" / "theme.qss"
 
-CARPETA_CONFIG = os.path.join(os.path.expanduser("~"), ".descargador_videos")
+# Se puede redirigir con DESCARGADOR_CONFIG_DIR (útil para pruebas).
+CARPETA_CONFIG = os.environ.get("DESCARGADOR_CONFIG_DIR") or os.path.join(
+    os.path.expanduser("~"), ".descargador_videos"
+)
 ARCHIVO_SETTINGS = os.path.join(CARPETA_CONFIG, "settings.json")
 ARCHIVO_HISTORIAL = os.path.join(CARPETA_CONFIG, "historial.json")
 
@@ -101,3 +104,12 @@ def agregar_historial(tipo, titulo, detalle="", carpeta="", estado="ok", origen=
 
 def limpiar_historial():
     guardar_historial([])
+
+
+def borrar_entrada_historial(indice):
+    """Borra una entrada por su índice en el historial guardado (orden cronológico)."""
+    historial = cargar_historial()
+    if 0 <= indice < len(historial):
+        historial.pop(indice)
+        guardar_historial(historial)
+    return historial

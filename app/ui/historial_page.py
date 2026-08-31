@@ -45,11 +45,15 @@ class HistorialPage(QWidget):
         b_refrescar = QPushButton("Actualizar")
         b_refrescar.setObjectName("ghost")
         b_refrescar.clicked.connect(self.refrescar)
+        b_borrar_sel = QPushButton("Borrar selección")
+        b_borrar_sel.setObjectName("ghost")
+        b_borrar_sel.clicked.connect(self._borrar_seleccion)
         b_borrar = QPushButton("Borrar historial")
         b_borrar.setObjectName("peligro")
         b_borrar.clicked.connect(self._borrar)
         fila_b.addWidget(b_abrir)
         fila_b.addWidget(b_refrescar)
+        fila_b.addWidget(b_borrar_sel)
         fila_b.addStretch()
         fila_b.addWidget(b_borrar)
         layout.addLayout(fila_b)
@@ -64,6 +68,7 @@ class HistorialPage(QWidget):
                 item.widget().deleteLater()
 
         self._filas = list(reversed(config.cargar_historial()))
+        self._total = len(self._filas)
         if not self._filas:
             vacio = QLabel("Aún no hay nada en el historial.")
             vacio.setStyleSheet("color:#8b97ad;padding:10px;")
@@ -116,6 +121,22 @@ class HistorialPage(QWidget):
                 subprocess.Popen(["xdg-open", carpeta])
         else:
             QMessageBox.warning(self, "Carpeta no encontrada", "Esa carpeta ya no existe.")
+
+    def _borrar_seleccion(self):
+        if not self.tabla:
+            return
+        fila = self.tabla.currentRow()
+        if not (0 <= fila < self._total):
+            QMessageBox.information(self, "Historial", "Selecciona una fila primero.")
+            return
+        entrada = self._filas[fila]
+        titulo = (entrada.get("titulo") or "esta entrada")[:60]
+        if QMessageBox.question(self, "Borrar entrada", f"¿Borrar «{titulo}» del historial?") != QMessageBox.Yes:
+            return
+        # self._filas está en orden inverso al guardado: fila 0 = última entrada.
+        indice_real = self._total - 1 - fila
+        config.borrar_entrada_historial(indice_real)
+        self.refrescar()
 
     def _borrar(self):
         if not self._filas:
