@@ -11,6 +11,28 @@ from app import config
 _NO_WINDOW = subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
 
 
+def _rutas_tipicas_windows(nombre):
+    if sys.platform != "win32":
+        return
+    exe = nombre + ".exe"
+    local = os.environ.get("LOCALAPPDATA", os.path.expanduser(r"~\AppData\Local"))
+    prog = os.environ.get("ProgramFiles", r"C:\Program Files")
+    yield os.path.join(local, "Microsoft", "WinGet", "Links", exe)
+    yield os.path.join(prog, "ffmpeg", "bin", exe)
+    yield os.path.join(r"C:\ffmpeg\bin", exe)
+    # WinGet guarda el binario real en Packages\Gyan.FFmpeg...\ffmpeg-*\bin
+    base_pkgs = os.path.join(local, "Microsoft", "WinGet", "Packages")
+    try:
+        for entrada in os.listdir(base_pkgs):
+            if "ffmpeg" in entrada.lower():
+                for raiz, _dirs, ficheros in os.walk(os.path.join(base_pkgs, entrada)):
+                    if exe in ficheros:
+                        yield os.path.join(raiz, exe)
+                        break
+    except OSError:
+        pass
+
+
 def _candidatos(nombre):
     manual = (config.cargar_settings().get("ffmpeg_manual") or "").strip()
     if manual:
@@ -21,6 +43,7 @@ def _candidatos(nombre):
         yield p
         yield os.path.join(base, nombre + (".exe" if sys.platform == "win32" else ""))
     yield shutil.which(nombre)
+    yield from _rutas_tipicas_windows(nombre)
     # yt-dlp trae a veces un ffmpeg embebido junto a imageio-ffmpeg
     try:
         import imageio_ffmpeg
