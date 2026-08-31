@@ -81,9 +81,11 @@ class DashboardPage(QWidget):
         self.fila_ffmpeg.addStretch()
         estado.layout_panel.addLayout(self.fila_ffmpeg)
         self.lbl_ytdlp = QLabel()
+        self.lbl_js = QLabel()
+        self.lbl_js.setWordWrap(True)
         self.lbl_carpetas = QLabel()
         self.lbl_carpetas.setWordWrap(True)
-        for w in (self.lbl_ytdlp, self.lbl_carpetas):
+        for w in (self.lbl_ytdlp, self.lbl_js, self.lbl_carpetas):
             w.setStyleSheet("color:#9aa6bc;font-size:11px;")
             estado.layout_panel.addWidget(w)
         estado.layout_panel.addStretch()
@@ -140,6 +142,13 @@ class DashboardPage(QWidget):
             )
         v = descargas.version_yt_dlp()
         self.lbl_ytdlp.setText(f"yt-dlp: {v}" if v else "yt-dlp: no instalado")
+        js = descargas.runtime_js()
+        if js:
+            self.lbl_js.setText(f"Motor JS: {js} (necesario para YouTube)")
+            self.lbl_js.setStyleSheet("color:#86efac;font-size:11px;")
+        else:
+            self.lbl_js.setText("Motor JS: falta — YouTube no funcionará. Instala Deno (winget install DenoLand.Deno)")
+            self.lbl_js.setStyleSheet("color:#fbbf24;font-size:11px;")
         s = config.cargar_settings()
         self.lbl_carpetas.setText(
             f"Descargas → {s['carpeta_descargas']}\nConversiones → {s['carpeta_conversiones']}"

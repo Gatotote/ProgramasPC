@@ -57,6 +57,8 @@ class Header(QFrame):
     def actualizar_estado(self):
         partes = []
         partes.append("FFmpeg ✓" if ffmpeg.disponible() else "FFmpeg ✗")
+        js = descargas.runtime_js()
+        partes.append(f"JS ✓ ({js})" if js else "JS ✗")
         v = descargas.version_yt_dlp()
         partes.append(f"yt-dlp {v}" if v else "yt-dlp ✗")
         self.lbl_estado.setText("   ·   ".join(partes))

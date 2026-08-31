@@ -257,7 +257,17 @@ class DescargasPage(QWidget):
         if errores:
             det = "\n".join(f"• {u[:60]}: {m}" for u, m in errores[:5])
             extra = ""
-            if any(descargas.es_error_de_formato(m) for _, m in errores) and not ffmpeg.disponible():
+            hay_formato = any(descargas.es_error_de_formato(m) for _, m in errores)
+            hay_youtube = any("youtub" in u.lower() for u, _ in errores)
+            if (hay_formato or any(descargas.es_error_de_js(m) for _, m in errores)) \
+                    and hay_youtube and not descargas.runtime_js():
+                extra = (
+                    "\n\nYouTube exige resolver un reto en JavaScript para dar los "
+                    "formatos de vídeo. Instala Deno (un motor de JS):\n"
+                    "    winget install DenoLand.Deno\n"
+                    "y reinicia el programa."
+                )
+            elif hay_formato and not ffmpeg.disponible():
                 extra = (
                     "\n\nEste vídeo no tiene una versión con vídeo+audio juntos. "
                     "Instala FFmpeg (winget install ffmpeg) y reinicia el programa: "

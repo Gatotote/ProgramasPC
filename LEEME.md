@@ -21,6 +21,13 @@ con borde de color.
   ```
   Si no está en el PATH, puedes indicar la ruta a `ffmpeg.exe` en la página
   **Configuración**.
+- **Deno** (motor de JavaScript) para descargar de **YouTube**: desde 2025
+  YouTube exige resolver un reto en JS y `yt-dlp` lo hace con Deno.
+  ```
+  winget install DenoLand.Deno
+  ```
+  La app descarga sola el script resolvedor (`remote_components: ejs:github`).
+  La cabecera muestra `JS ✓` cuando Deno (o Node) está disponible.
 
 ## Ejecutar
 

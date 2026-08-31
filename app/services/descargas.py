@@ -1,6 +1,7 @@
 """Descarga de vídeos con yt-dlp, en un hilo aparte para no congelar la GUI."""
 
 import os
+import shutil
 import urllib.request
 
 from PySide6.QtCore import QThread, Signal
@@ -30,6 +31,7 @@ NAVEGADORES_COOKIES = {
 
 _MSG_BOT = ("sign in to confirm", "confirm you're not a bot", "confirm you are not a bot")
 _MSG_FORMATO = ("requested format is not available", "requested format not available")
+_MSG_JS = ("challenge", "javascript runtime", "only images are available", "nsig", "jsinterp")
 
 
 def es_error_de_cookies(mensaje):
@@ -42,9 +44,37 @@ def es_error_de_formato(mensaje):
     return any(t in m for t in _MSG_FORMATO)
 
 
+def es_error_de_js(mensaje):
+    m = (mensaje or "").lower()
+    return any(t in m for t in _MSG_JS)
+
+
+def runtime_js():
+    """Nombre del motor JS que usará yt-dlp para el reto de YouTube, o None."""
+    for exe in ("deno", "node", "bun"):
+        if shutil.which(exe):
+            return exe
+    return None
+
+
 def _aplicar_cookies(opciones, navegador):
     if navegador:
         opciones["cookiesfrombrowser"] = (navegador,)
+
+
+def opciones_base():
+    """Opciones comunes a la info previa y a la descarga.
+
+    'remote_components' deja que yt-dlp baje (y cachee) el script resolvedor de
+    retos de YouTube desde GitHub; se ejecuta con Deno/Node. Sin esto YouTube
+    no entrega ningún formato de vídeo ("Only images are available").
+    """
+    return {
+        "noplaylist": True,
+        "quiet": True,
+        "no_warnings": True,
+        "remote_components": ["ejs:github"],
+    }
 
 
 def yt_dlp_disponible():
@@ -88,7 +118,7 @@ def info_previa(url, navegador=""):
     if yt_dlp is None:
         return None, None
     try:
-        opciones = {"quiet": True, "skip_download": True, "noplaylist": True}
+        opciones = {**opciones_base(), "skip_download": True}
         _aplicar_cookies(opciones, navegador)
         with yt_dlp.YoutubeDL(opciones) as ydl:
             info = ydl.extract_info(url, download=False)
@@ -159,11 +189,9 @@ class DescargaWorker(QThread):
 
             os.makedirs(self.carpeta, exist_ok=True)
             opciones = {
+                **opciones_base(),
                 "outtmpl": os.path.join(self.carpeta, "%(title)s.%(ext)s"),
                 "progress_hooks": [self._hook],
-                "noplaylist": True,
-                "quiet": True,
-                "no_warnings": True,
             }
             ff = ffmpeg.ruta_ffmpeg()
             if ff:
