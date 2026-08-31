@@ -1,110 +1,73 @@
-# Descargador de Videos para Windows
+# Descargador y Conversor
 
-Programa con interfaz gráfica para descargar videos de sitios web (compatible con
-cientos de sitios gracias a `yt-dlp`, incluyendo YouTube, Vimeo, y muchos más).
+Aplicación de escritorio para **descargar vídeos** (cientos de sitios vía
+`yt-dlp`) y **convertir archivos de vídeo y audio** entre formatos (vía FFmpeg).
+
+La interfaz está hecha en **PySide6 (Qt)** con el mismo estilo que el Centro de
+Control: barra lateral oscura, cabecera superior, páginas por módulo y tarjetas
+con borde de color.
 
 ## Requisitos
 
-- Windows 10 u 11
-- Python 3.9 o superior instalado ([python.org](https://www.python.org/downloads/))
-- FFmpeg (solo necesario si vas a convertir a MP3 o unir video+audio en calidades
-  altas). Puedes instalarlo con `winget install ffmpeg` desde la terminal de Windows.
+- Windows 10/11 y Python 3.9 o superior.
+- Dependencias de Python:
+  ```
+  pip install -r requirements.txt
+  ```
+- **FFmpeg** para el conversor y para bajar MP3 / fusionar vídeo+audio en
+  calidades altas:
+  ```
+  winget install ffmpeg
+  ```
+  Si no está en el PATH, puedes indicar la ruta a `ffmpeg.exe` en la página
+  **Configuración**.
 
-## Instalación de dependencias
-
-Abre una terminal (CMD o PowerShell) en esta carpeta y ejecuta:
-
-```
-pip install -r requirements.txt
-```
-
-## Cómo usar el programa
-
-1. Ejecuta el programa con:
-   ```
-   python descargador_videos.py
-   ```
-2. Pega la URL del video que quieres descargar. Puedes pegar **varias URLs,
-   una por línea**, y el programa las descargará una por una en orden.
-3. Elige la calidad deseada, o marca "Descargar solo audio (MP3)" si solo
-   quieres el audio (aplica a todas las URLs de la lista).
-4. Presiona el ícono de carpeta (📁) para elegir dónde se guardará el video.
-   El programa recuerda la última carpeta que usaste, así no tienes que
-   elegirla cada vez.
-5. Presiona "Descargar". Verás el título del video y una miniatura en la
-   sección "Progreso" mientras se descarga. Si algo va mal o cambias de
-   opinión, presiona "Cancelar" para detener la descarga.
-6. La ventana ahora se puede redimensionar arrastrando las esquinas o
-   bordes, por si quieres verla más grande.
-
-## Evitar archivos separados de video y audio
-
-Algunos videos se descargan como dos archivos (uno de video y otro de
-audio) cuando **FFmpeg no está instalado**, porque el programa no puede
-fusionarlos en uno solo. El programa ahora detecta automáticamente si
-tienes FFmpeg:
-
-- **Con FFmpeg instalado:** descarga la mejor calidad de video y audio por
-  separado y los fusiona en un único archivo `.mp4`.
-- **Sin FFmpeg:** verás una advertencia en la pestaña "Descargar" y el
-  programa elegirá automáticamente una sola calidad combinada (puede ser
-  algo menor a 1080p en algunos sitios), así siempre queda un solo archivo.
-
-Para tener siempre la mejor calidad fusionada, instala FFmpeg con:
-```
-winget install ffmpeg
-```
-y reinicia el programa.
-
-## Historial de descargas
-
-El programa tiene una segunda pestaña llamada "Historial" donde se guarda
-cada video que descargas, con su título, fecha y la carpeta donde quedó
-guardado. Puedes:
-
-- Hacer doble clic en un elemento (o seleccionarlo y presionar "Abrir
-  carpeta") para abrir la carpeta donde se guardó ese video.
-- Presionar "Borrar historial" para limpiar la lista completa.
-
-El historial y la carpeta recordada se guardan en archivos de configuración
-dentro de `%USERPROFILE%\.descargador_videos\` (historial.json y
-settings.json), así que se mantienen aunque cierres y vuelvas a abrir el
-programa.
-
-## Convertirlo en un .exe (opcional)
-
-Si quieres un archivo ejecutable independiente que no requiera tener Python
-instalado, usa PyInstaller (ya incluido en requirements.txt):
+## Ejecutar
 
 ```
-pyinstaller --onefile --windowed --name "DescargadorDeVideos" descargador_videos.py
+python main.py
 ```
 
-El ejecutable quedará en la carpeta `dist/DescargadorDeVideos.exe`. Puedes
-copiarlo a cualquier parte de tu computadora y usarlo directamente.
+## Módulos
 
-## Ícono personalizado (gato)
+| Página | Qué hace |
+|---|---|
+| **Dashboard** | Contadores (descargas, conversiones, solo audio, errores), acciones rápidas, estado de FFmpeg/yt-dlp y actividad reciente. |
+| **Descargar vídeos** | Pega una o varias URLs (una por línea), elige calidad o «solo audio (MP3)», carpeta destino, y descarga con miniatura y barra de progreso. |
+| **Convertir archivos** | Añade uno o varios archivos, elige tipo (Vídeo/Audio) y formato de salida (MP4, MKV, WebM, AVI, MOV, GIF / MP3, M4A, WAV, FLAC, OGG) y carpeta destino. |
+| **Historial** | Tabla con todas las descargas y conversiones; doble clic abre la carpeta. |
+| **Configuración** | Carpetas por defecto, calidad por defecto, ruta manual de FFmpeg. |
 
-El programa incluye `cat_icon.ico`, un ícono con un gato minimalista dibujado
-para esta app. Ya está conectado: la ventana lo mostrará automáticamente al
-abrir el programa (siempre que `cat_icon.ico` esté en la misma carpeta que
-`descargador_videos.py`).
+La configuración y el historial se guardan en `%USERPROFILE%\.descargador_videos\`
+(`settings.json`, `historial.json`), compatibles con la versión anterior.
 
-Si generas el `.exe` con PyInstaller, agrégalo también como ícono del
-ejecutable con:
+## Estructura
 
 ```
-pyinstaller --onefile --windowed --icon=cat_icon.ico --name "DescargadorDeVideos" descargador_videos.py
+main.py                     Punto de entrada (PySide6)
+app/
+  config.py                 Ajustes e historial persistentes
+  resources/theme.qss       Tema oscuro (idéntico al de Centro de Control)
+  services/
+    ffmpeg.py               Localiza FFmpeg/FFprobe y lo lanza sin consola
+    descargas.py            Envoltorio de yt-dlp + hilo de descarga
+    conversion.py           Presets de formato + hilo de conversión FFmpeg
+  widgets/                   sidebar, header, tarjeta/panel, chip, tabla, campos, iconos
+  ui/                        dashboard / descargas / convertir / historial / configuración / ventana
+generar_icono.py            Genera cat_icon.ico (Pillow)
+descargador_videos.py       Interfaz antigua en Tkinter (se conserva de momento)
 ```
 
-Si quieres regenerar o modificar el ícono, usa `generar_icono.py` (dibuja el
-gato con Pillow, sin depender de ninguna imagen externa).
+## Empaquetar como .exe (opcional)
 
-## Nota importante sobre derechos de autor
+```
+pyinstaller --onefile --windowed --icon=cat_icon.ico --name "DescargadorYConversor" ^
+  --add-data "app/resources/theme.qss;app/resources" --add-data "cat_icon.ico;." main.py
+```
 
-Este programa es una herramienta general para descargar contenido. Úsalo solo
-para descargar videos de los que tengas derecho a descargar (contenido propio,
-de dominio público, con licencia que lo permita, o cuando el sitio lo autorice
-explícitamente). Descargar contenido protegido por derechos de autor sin
-permiso puede ir en contra de los términos de servicio del sitio y de la ley
-aplicable en tu país.
+## Nota sobre derechos de autor
+
+Herramienta de uso general. Descarga solo contenido sobre el que tengas
+derechos (propio, de dominio público, con licencia que lo permita o con permiso
+explícito del sitio). Descargar material protegido sin permiso puede infringir
+los términos del sitio y la ley aplicable.
