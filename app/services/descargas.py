@@ -29,11 +29,17 @@ NAVEGADORES_COOKIES = {
 }
 
 _MSG_BOT = ("sign in to confirm", "confirm you're not a bot", "confirm you are not a bot")
+_MSG_FORMATO = ("requested format is not available", "requested format not available")
 
 
 def es_error_de_cookies(mensaje):
     m = (mensaje or "").lower()
     return any(t in m for t in _MSG_BOT)
+
+
+def es_error_de_formato(mensaje):
+    m = (mensaje or "").lower()
+    return any(t in m for t in _MSG_FORMATO)
 
 
 def _aplicar_cookies(opciones, navegador):
@@ -51,26 +57,30 @@ def version_yt_dlp():
     return getattr(yt_dlp.version, "__version__", "desconocida")
 
 
+_ALTURA = {"1080p": 1080, "720p": 720, "480p": 480, "360p": 360}
+
+
 def formato_para(calidad, con_ffmpeg):
-    """Cadena 'format' de yt-dlp según la calidad elegida y si hay FFmpeg."""
+    """Cadena 'format' de yt-dlp según la calidad elegida y si hay FFmpeg.
+
+    Cada opción lleva varios respaldos ('/') para que, si el sitio no ofrece
+    exactamente eso, yt-dlp baje lo más parecido en vez de fallar con
+    "Requested format is not available".
+    """
     if con_ffmpeg:
-        mapa = {
-            "Mejor calidad disponible": "bestvideo+bestaudio/best",
-            "1080p": "bestvideo[height<=1080]+bestaudio/best[height<=1080]",
-            "720p": "bestvideo[height<=720]+bestaudio/best[height<=720]",
-            "480p": "bestvideo[height<=480]+bestaudio/best[height<=480]",
-            "360p": "bestvideo[height<=360]+bestaudio/best[height<=360]",
-        }
-    else:
-        # Sin FFmpeg no se pueden fusionar pistas: un único stream combinado.
-        mapa = {
-            "Mejor calidad disponible": "best",
-            "1080p": "best[height<=1080]",
-            "720p": "best[height<=720]",
-            "480p": "best[height<=480]",
-            "360p": "best[height<=360]",
-        }
-    return mapa.get(calidad, "best")
+        if calidad not in _ALTURA:
+            return "bv*+ba/b/bv*+ba*"
+        h = _ALTURA[calidad]
+        return (
+            f"bv*[height<={h}]+ba/b[height<={h}]/"
+            f"bv*[height<={h}]+ba*/bv*+ba/b"
+        )
+    # Sin FFmpeg no se pueden fusionar pistas: hay que quedarse con un único
+    # stream que ya traiga vídeo+audio. Si no existe, se coge el mejor a secas.
+    if calidad not in _ALTURA:
+        return "b/bv*+ba"
+    h = _ALTURA[calidad]
+    return f"b[height<={h}]/b/bv*[height<={h}]+ba"
 
 
 def info_previa(url, navegador=""):

@@ -257,7 +257,13 @@ class DescargasPage(QWidget):
         if errores:
             det = "\n".join(f"• {u[:60]}: {m}" for u, m in errores[:5])
             extra = ""
-            if any(descargas.es_error_de_cookies(m) for _, m in errores):
+            if any(descargas.es_error_de_formato(m) for _, m in errores) and not ffmpeg.disponible():
+                extra = (
+                    "\n\nEste vídeo no tiene una versión con vídeo+audio juntos. "
+                    "Instala FFmpeg (winget install ffmpeg) y reinicia el programa: "
+                    "así se descargan por separado y se unen solos."
+                )
+            elif any(descargas.es_error_de_cookies(m) for _, m in errores):
                 if self.combo_cookies.currentText() == "Ninguno":
                     extra = (
                         "\n\nYouTube pide iniciar sesión. En «Cookies de:» elige el "
