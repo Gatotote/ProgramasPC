@@ -28,6 +28,16 @@ con borde de color.
 python main.py
 ```
 
+En Windows también puedes hacer doble clic en **`abrir.bat`**. Para tener un
+acceso directo en el Escritorio, ejecuta una vez (clic derecho → *Ejecutar con
+PowerShell*):
+
+```
+crear-acceso-escritorio.ps1
+```
+
+Si mueves la carpeta del proyecto, vuelve a ejecutar ese script.
+
 ## Módulos
 
 | Página | Qué hace |
