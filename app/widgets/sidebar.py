@@ -42,8 +42,9 @@ class Sidebar(QFrame):
         fila_marca = QHBoxLayout(marca)
         fila_marca.setContentsMargins(4, 0, 4, 18)
         logo = QLabel()
-        if config.RUTA_ICONO.exists():
-            pm = QPixmap(str(config.RUTA_ICONO)).scaled(
+        ruta_logo = config.RUTA_LOGO_CLARO if config.RUTA_LOGO_CLARO.exists() else config.RUTA_ICONO
+        if ruta_logo.exists():
+            pm = QPixmap(str(ruta_logo)).scaled(
                 36, 36, Qt.KeepAspectRatio, Qt.SmoothTransformation
             )
             logo.setPixmap(pm)

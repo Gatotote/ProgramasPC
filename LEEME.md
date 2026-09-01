@@ -72,15 +72,30 @@ app/
     imagenes.py             Conversión de imágenes y RAW de cámara (rawpy + Pillow)
   widgets/                   sidebar, header, tarjeta/panel, chip, tabla, campos, iconos
   ui/                        dashboard / descargas / convertir / historial / configuración / ventana
-generar_icono.py            Genera cat_icon.ico (Pillow)
+generar_recursos.py         Genera assets/ (emblema, logos, banner) con Pillow
+assets/                     icono.ico, logo_azul|claro|oscuro.png, banner.png
+generar_icono.py            (1ª versión) genera cat_icon.ico
 descargador_videos.py       Interfaz antigua en Tkinter (se conserva de momento)
 ```
+
+## Recursos gráficos
+
+El emblema (aro fino con flechas de descarga/conversión, en azul) es de la
+misma familia que el de Centro de Control pero distinto. Se regenera con:
+
+```
+python generar_recursos.py
+```
+
+Produce `assets/icono.ico`, `assets/logo_azul|claro|oscuro.png` y
+`assets/banner.png`. (`cat_icon.ico` y `generar_icono.py` son la marca de la
+primera versión; se conservan pero ya no se usan.)
 
 ## Empaquetar como .exe (opcional)
 
 ```
-pyinstaller --onefile --windowed --icon=cat_icon.ico --name "DescargadorYConversor" ^
-  --add-data "app/resources/theme.qss;app/resources" --add-data "cat_icon.ico;." main.py
+pyinstaller --onefile --windowed --icon=assets/icono.ico --name "DescargadorYConversor" ^
+  --add-data "app/resources/theme.qss;app/resources" --add-data "assets;assets" main.py
 ```
 
 ## Nota sobre derechos de autor

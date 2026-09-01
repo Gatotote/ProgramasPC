@@ -10,7 +10,16 @@ from datetime import datetime
 from pathlib import Path
 
 RAIZ_PROYECTO = Path(__file__).resolve().parent.parent
-RUTA_ICONO = RAIZ_PROYECTO / "cat_icon.ico"
+_ASSETS = RAIZ_PROYECTO / "assets"
+
+# Icono de ventana/exe: el nuevo emblema; si no está, el gato de la 1ª versión.
+RUTA_ICONO = _ASSETS / "icono.ico"
+if not RUTA_ICONO.exists():
+    RUTA_ICONO = RAIZ_PROYECTO / "cat_icon.ico"
+
+# Emblema para la barra lateral y la cabecera (variante clara sobre fondo oscuro).
+RUTA_LOGO_CLARO = _ASSETS / "logo_claro.png"
+
 RUTA_TEMA = RAIZ_PROYECTO / "app" / "resources" / "theme.qss"
 
 # Se puede redirigir con DESCARGADOR_CONFIG_DIR (útil para pruebas).

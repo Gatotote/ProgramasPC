@@ -3,7 +3,8 @@ $ErrorActionPreference = "Stop"
 $desktop = [Environment]::GetFolderPath("Desktop")
 $carpeta = $PSScriptRoot
 $destino = Join-Path $carpeta "abrir.bat"
-$icono   = Join-Path $carpeta "cat_icon.ico"
+$icono   = Join-Path $carpeta "assets\icono.ico"
+if (-not (Test-Path $icono)) { $icono = Join-Path $carpeta "cat_icon.ico" }
 
 $shell = New-Object -ComObject WScript.Shell
 $lnk = $shell.CreateShortcut((Join-Path $desktop "Descargador y Conversor.lnk"))

@@ -30,8 +30,9 @@ class Header(QFrame):
         hamburguesa.clicked.connect(self.alternar_menu.emit)
 
         marca = QLabel()
-        if config.RUTA_ICONO.exists():
-            marca.setPixmap(QPixmap(str(config.RUTA_ICONO)).scaled(
+        ruta_marca = config.RUTA_LOGO_CLARO if config.RUTA_LOGO_CLARO.exists() else config.RUTA_ICONO
+        if ruta_marca.exists():
+            marca.setPixmap(QPixmap(str(ruta_marca)).scaled(
                 28, 28, Qt.KeepAspectRatio, Qt.SmoothTransformation
             ))
         marca.setFixedSize(32, 32)
