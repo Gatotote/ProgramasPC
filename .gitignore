@@ -6,10 +6,10 @@ __pycache__/
 venv/
 env/
 
-# PyInstaller
+# PyInstaller / instalador
 build/
 dist/
-*.spec
+Output/
 
 # Generado por generar_icono.py
 cat_icon_preview.png

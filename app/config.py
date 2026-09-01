@@ -6,10 +6,15 @@ para no perder el historial ni la última carpeta guardada.
 
 import json
 import os
+import sys
 from datetime import datetime
 from pathlib import Path
 
-RAIZ_PROYECTO = Path(__file__).resolve().parent.parent
+if getattr(sys, "frozen", False):
+    # Empaquetado con PyInstaller: los datos van junto al ejecutable.
+    RAIZ_PROYECTO = Path(getattr(sys, "_MEIPASS", Path(sys.executable).resolve().parent))
+else:
+    RAIZ_PROYECTO = Path(__file__).resolve().parent.parent
 _ASSETS = RAIZ_PROYECTO / "assets"
 
 # Icono de ventana/exe: el nuevo emblema; si no está, el gato de la 1ª versión.

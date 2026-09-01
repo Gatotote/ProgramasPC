@@ -74,6 +74,10 @@ app/
   ui/                        dashboard / descargas / convertir / historial / configuración / ventana
 generar_recursos.py         Genera assets/ (emblema, logos, banner) con Pillow
 assets/                     icono.ico, logo_azul|claro|oscuro.png, banner.png
+DescargadorYConversor.spec  Config de PyInstaller
+installer/instalador.iss    Script de Inno Setup
+construir_instalador.ps1    Build: PyInstaller + Inno Setup → Output/…-Setup.exe
+VERSION                     Versión de la app
 generar_icono.py            (1ª versión) genera cat_icon.ico
 descargador_videos.py       Interfaz antigua en Tkinter (se conserva de momento)
 ```
@@ -91,12 +95,25 @@ Produce `assets/icono.ico`, `assets/logo_azul|claro|oscuro.png` y
 `assets/banner.png`. (`cat_icon.ico` y `generar_icono.py` son la marca de la
 primera versión; se conservan pero ya no se usan.)
 
-## Empaquetar como .exe (opcional)
+## Crear el instalador de Windows
+
+Necesitas una vez: `pip install pyinstaller` y `winget install JRSoftware.InnoSetup`.
 
 ```
-pyinstaller --onefile --windowed --icon=assets/icono.ico --name "DescargadorYConversor" ^
-  --add-data "app/resources/theme.qss;app/resources" --add-data "assets;assets" main.py
+powershell -ExecutionPolicy Bypass -File construir_instalador.ps1
 ```
+
+Hace dos pasos:
+
+1. **PyInstaller** (`DescargadorYConversor.spec`) → `dist/DescargadorYConversor/`
+   (la app y todo lo que necesita, sin Python).
+2. **Inno Setup** (`installer/instalador.iss`) → `Output/DescargadorYConversor-<versión>-Setup.exe`
+   (~58 MB).
+
+El `Setup.exe` instala en *Archivos de programa*, crea accesos en Inicio y
+(opcional) Escritorio, añade desinstalador, y ofrece casillas para instalar
+**FFmpeg** y **Deno** con winget durante la instalación. La versión sale de
+`VERSION` (ajústala también en `installer/instalador.iss`).
 
 ## Nota sobre derechos de autor
 
