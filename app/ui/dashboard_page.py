@@ -12,7 +12,7 @@ from PySide6.QtWidgets import (
 from app import config
 from app.services import descargas, ffmpeg, imagenes
 from app.widgets.chip import Chip
-from app.widgets.tarjeta import Panel, TarjetaKPI
+from app.widgets.tarjeta import IndicadorCircular, Panel
 
 
 class DashboardPage(QWidget):
@@ -25,6 +25,7 @@ class DashboardPage(QWidget):
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
         scroll.setFrameShape(QScrollArea.NoFrame)
+        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         cont = QWidget()
         layout = QVBoxLayout(cont)
         layout.setContentsMargins(16, 14, 16, 16)
@@ -34,21 +35,26 @@ class DashboardPage(QWidget):
         cabecera.setStyleSheet("font-size:20px;font-weight:800;")
         layout.addWidget(cabecera)
 
-        # --- KPIs ---
-        kpis = QHBoxLayout()
-        kpis.setSpacing(10)
-        self.kpi_descargas = TarjetaKPI("Descargas", 0, "#2563eb")
-        self.kpi_conversiones = TarjetaKPI("Conversiones", 0, "#f59e0b")
-        self.kpi_audio = TarjetaKPI("Solo audio", 0, "#16a34a")
-        self.kpi_errores = TarjetaKPI("Con error", 0, "#dc2626")
-        for t in (self.kpi_descargas, self.kpi_conversiones, self.kpi_audio, self.kpi_errores):
-            t.setMaximumHeight(88)
-            kpis.addWidget(t)
-        layout.addLayout(kpis)
-
-        # --- Cuerpo ---
+        # --- Cuerpo: círculos a la izquierda, paneles en lista a la derecha ---
         cuerpo = QHBoxLayout()
-        cuerpo.setSpacing(10)
+        cuerpo.setSpacing(14)
+
+        col_ind = QVBoxLayout()
+        col_ind.setSpacing(10)
+        self.kpi_descargas = IndicadorCircular("Descargas", 0, "#3b82f6")
+        self.kpi_conversiones = IndicadorCircular("Conversiones", 0, "#f59e0b")
+        self.kpi_audio = IndicadorCircular("Solo audio", 0, "#22c55e")
+        self.kpi_errores = IndicadorCircular("Con error", 0, "#ef4444")
+        for ind in (self.kpi_descargas, self.kpi_conversiones, self.kpi_audio, self.kpi_errores):
+            col_ind.addWidget(ind)
+        col_ind.addStretch()
+        panel_ind = QWidget()
+        panel_ind.setLayout(col_ind)
+        panel_ind.setFixedWidth(140)
+        cuerpo.addWidget(panel_ind, 0, Qt.AlignTop)
+
+        col_pan = QVBoxLayout()
+        col_pan.setSpacing(12)
 
         acciones = Panel("Acciones rápidas", borde="#3b82f6", acento="#93c5fd")
         b_desc = QPushButton("  Descargar un vídeo")
@@ -68,10 +74,7 @@ class DashboardPage(QWidget):
         b_hist.clicked.connect(lambda: self.ir_a.emit(3))
         for b in (b_desc, b_conv, b_hist):
             acciones.layout_panel.addWidget(b)
-        acciones.layout_panel.addStretch()
-        acciones.setMinimumWidth(240)
-        acciones.setMaximumWidth(320)
-        cuerpo.addWidget(acciones, 2)
+        col_pan.addWidget(acciones)
 
         estado = Panel("Estado del sistema", borde="#f59e0b", acento="#fbbf24")
         self.fila_ffmpeg = QHBoxLayout()
@@ -90,24 +93,23 @@ class DashboardPage(QWidget):
         for w in (self.lbl_ytdlp, self.lbl_js, self.lbl_raw, self.lbl_carpetas):
             w.setStyleSheet("color:#9aa6bc;font-size:11px;")
             estado.layout_panel.addWidget(w)
-        estado.layout_panel.addStretch()
-        cuerpo.addWidget(estado, 3)
+        col_pan.addWidget(estado)
 
         reciente = Panel("Actividad reciente", borde="#a78bfa", acento="#c4b5fd")
         scroll_r = QScrollArea()
         scroll_r.setWidgetResizable(True)
         scroll_r.setFrameShape(QScrollArea.NoFrame)
+        scroll_r.setMinimumHeight(160)
         cont_r = QWidget()
         self.layout_reciente = QVBoxLayout(cont_r)
         self.layout_reciente.setContentsMargins(0, 0, 4, 0)
         self.layout_reciente.setSpacing(6)
         scroll_r.setWidget(cont_r)
         reciente.layout_panel.addWidget(scroll_r)
-        reciente.setMinimumWidth(240)
-        cuerpo.addWidget(reciente, 3)
+        col_pan.addWidget(reciente, 1)
 
+        cuerpo.addLayout(col_pan, 1)
         layout.addLayout(cuerpo, 1)
-        layout.addStretch()
 
         scroll.setWidget(cont)
         raiz = QVBoxLayout(self)

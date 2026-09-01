@@ -1,5 +1,34 @@
 from PySide6.QtCore import Qt
-from PySide6.QtWidgets import QFrame, QLabel, QVBoxLayout
+from PySide6.QtWidgets import QFrame, QLabel, QVBoxLayout, QWidget
+
+
+class IndicadorCircular(QWidget):
+    """Círculo con solo el borde de color, un número dentro y una etiqueta debajo."""
+
+    def __init__(self, titulo, valor, color):
+        super().__init__()
+        self._color = color
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(0, 6, 0, 6)
+        layout.setSpacing(6)
+        layout.setAlignment(Qt.AlignHCenter)
+
+        self.circulo = QLabel(str(valor))
+        self.circulo.setFixedSize(78, 78)
+        self.circulo.setAlignment(Qt.AlignCenter)
+        self.circulo.setStyleSheet(
+            f"border: 3px solid {color}; border-radius: 39px;"
+            f"color: {color}; font-size: 22px; font-weight: 800; background: transparent;"
+        )
+        titulo_lbl = QLabel(titulo.upper())
+        titulo_lbl.setAlignment(Qt.AlignHCenter)
+        titulo_lbl.setStyleSheet("color:#9aa6bc; font-size:10px; letter-spacing:0.6px;")
+
+        layout.addWidget(self.circulo, 0, Qt.AlignHCenter)
+        layout.addWidget(titulo_lbl, 0, Qt.AlignHCenter)
+
+    def actualizar_valor(self, valor):
+        self.circulo.setText(str(valor))
 
 
 class TarjetaKPI(QFrame):
