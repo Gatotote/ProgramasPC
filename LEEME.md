@@ -37,5 +37,6 @@ uv pip install --python .venv -r requirements.txt
 .venv/bin/python main.py
 ```
 
-`generar_icono.py` regenera `assets/icono.png` (requiere Pillow, no es
-dependencia de la app).
+El icono se edita en `assets/icono.svg` (Inkscape). `generar_icono.py` lo
+rasteriza a `assets/icono.png` 256x256 (requiere `rsvg-convert` o `inkscape`,
+no son dependencia de la app).

@@ -1,16 +1,29 @@
-"""Ventana principal del Organizador de Archivos (PySide6)."""
+"""Ventana principal del Organizador de Archivos (PySide6).
+
+Estilo visual: HUD / panel de control futurista (fondo azul profundo,
+acentos cian, marcos con esquinas recortadas y corchetes de acento).
+"""
 
 from __future__ import annotations
 
 from pathlib import Path
 
-from PySide6.QtCore import QObject, Qt, QThread, Signal, Slot
-from PySide6.QtGui import QDragEnterEvent, QDropEvent, QIcon
+from PySide6.QtCore import Qt, QObject, QThread, Signal, Slot
+from PySide6.QtGui import (
+    QColor,
+    QDragEnterEvent,
+    QDropEvent,
+    QFont,
+    QIcon,
+    QPainter,
+    QPainterPath,
+    QPen,
+)
 from PySide6.QtWidgets import (
     QApplication,
     QCheckBox,
     QFileDialog,
-    QFrame,
+    QGraphicsDropShadowEffect,
     QHBoxLayout,
     QLabel,
     QLineEdit,
@@ -25,6 +38,181 @@ from PySide6.QtWidgets import (
 from .motor import Accion, Opciones, Plan, construir_plan, ejecutar
 
 ASSETS = Path(__file__).resolve().parent.parent / "assets"
+
+# --- paleta HUD ---------------------------------------------------------
+FONDO = "#081420"
+PANEL = "#0b1f30"
+BORDE = "#1f6f8c"
+CIAN = "#2de2ff"
+TEXTO = "#cfeffb"
+TENUE = "#6f9fb5"
+PELIGRO = "#ff5c7c"
+
+QSS_HUD = f"""
+* {{
+    font-family: "Inter", "Segoe UI", "Cantarell", "Noto Sans", sans-serif;
+}}
+QWidget#Root {{
+    background: {FONDO};
+    color: {TEXTO};
+}}
+QLabel {{ color: {TEXTO}; background: transparent; }}
+QLabel#Titulo {{
+    color: #eafcff;
+    font-size: 21px;
+    font-weight: 700;
+}}
+QLabel#Subtitulo {{ color: {TENUE}; font-size: 12px; }}
+
+QLineEdit {{
+    background: #06121d;
+    border: 1px solid #14435a;
+    border-radius: 0;
+    padding: 8px 10px;
+    color: #dff6ff;
+    selection-background-color: #0090b0;
+}}
+QLineEdit:focus {{ border: 1px solid {CIAN}; }}
+
+QPushButton {{
+    background: rgba(45, 226, 255, 0.08);
+    border: 1px solid {BORDE};
+    border-radius: 0;
+    color: #bff0ff;
+    padding: 8px 20px;
+    font-weight: 600;
+}}
+QPushButton:hover {{
+    border-color: {CIAN};
+    background: rgba(45, 226, 255, 0.16);
+    color: #eafdff;
+}}
+QPushButton:pressed {{ background: rgba(45, 226, 255, 0.28); }}
+QPushButton:disabled {{
+    color: #46707f;
+    border-color: #123240;
+    background: transparent;
+}}
+QPushButton#Primario {{
+    background: rgba(45, 226, 255, 0.16);
+    border: 1px solid {CIAN};
+    color: #eafdff;
+}}
+QPushButton#Primario:hover {{ background: rgba(45, 226, 255, 0.30); }}
+QPushButton#Primario:disabled {{
+    color: #46707f;
+    border-color: #123240;
+    background: transparent;
+}}
+
+QCheckBox {{ color: #a9d9e8; spacing: 10px; padding: 3px 0; background: transparent; }}
+QCheckBox::indicator {{
+    width: 15px; height: 15px;
+    border: 1px solid {BORDE};
+    background: #06121d;
+}}
+QCheckBox::indicator:hover {{ border-color: {CIAN}; }}
+QCheckBox::indicator:checked {{ background: {CIAN}; border-color: {CIAN}; }}
+QCheckBox:disabled {{ color: #46707f; }}
+QCheckBox::indicator:disabled {{ border-color: #123240; background: #0a1620; }}
+
+QPlainTextEdit {{
+    background: #050f18;
+    border: 1px solid #14435a;
+    border-radius: 0;
+    color: #8fe6c4;
+    font-family: "JetBrains Mono", "Noto Sans Mono", "DejaVu Sans Mono", monospace;
+    font-size: 12px;
+    padding: 8px;
+    selection-background-color: #0090b0;
+}}
+
+QProgressBar {{
+    background: #06121d;
+    border: 1px solid #14435a;
+    border-radius: 0;
+    height: 14px;
+    text-align: center;
+    color: {TEXTO};
+}}
+QProgressBar::chunk {{ background: {CIAN}; }}
+
+QScrollBar:vertical {{ background: #06121d; width: 12px; margin: 0; }}
+QScrollBar::handle:vertical {{ background: {BORDE}; min-height: 24px; }}
+QScrollBar::handle:vertical:hover {{ background: {CIAN}; }}
+QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {{ height: 0; }}
+QScrollBar:horizontal {{ background: #06121d; height: 12px; margin: 0; }}
+QScrollBar::handle:horizontal {{ background: {BORDE}; min-width: 24px; }}
+QScrollBar::add-line:horizontal, QScrollBar::sub-line:horizontal {{ width: 0; }}
+
+QMessageBox {{ background: {FONDO}; }}
+QMessageBox QLabel {{ color: {TEXTO}; }}
+"""
+
+
+class MarcoHUD(QWidget):
+    """Panel con marco estilo HUD: esquinas sup-izq / inf-der recortadas y
+    corchetes de acento en las otras dos. Los widgets van en ``self.cuerpo``.
+    """
+
+    def __init__(self, titulo: str = "", parent: QWidget | None = None) -> None:
+        super().__init__(parent)
+        self._titulo = titulo.upper()
+        self._resaltado = False
+        arriba = 34 if titulo else 16
+        self.cuerpo = QVBoxLayout(self)
+        self.cuerpo.setContentsMargins(18, arriba, 18, 16)
+        self.cuerpo.setSpacing(10)
+
+    def set_resaltado(self, valor: bool) -> None:
+        if valor != self._resaltado:
+            self._resaltado = valor
+            self.update()
+
+    def paintEvent(self, _e) -> None:  # noqa: N802
+        p = QPainter(self)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+        r = self.rect().adjusted(1, 1, -2, -2)
+        ch = 14  # tamaño del chaflán
+
+        linea = QColor(CIAN) if self._resaltado else QColor(BORDE)
+        acento = QColor(CIAN)
+
+        cuerpo = QPainterPath()
+        cuerpo.moveTo(r.left() + ch, r.top())
+        cuerpo.lineTo(r.right(), r.top())
+        cuerpo.lineTo(r.right(), r.bottom() - ch)
+        cuerpo.lineTo(r.right() - ch, r.bottom())
+        cuerpo.lineTo(r.left(), r.bottom())
+        cuerpo.lineTo(r.left(), r.top() + ch)
+        cuerpo.closeSubpath()
+
+        p.fillPath(cuerpo, QColor(PANEL))
+        p.setPen(QPen(linea, 1.2))
+        p.drawPath(cuerpo)
+
+        # corchetes de acento: esquina sup-der e inf-izq
+        b = 18
+        p.setPen(QPen(acento, 2))
+        p.drawLine(r.right() - b, r.top(), r.right(), r.top())
+        p.drawLine(r.right(), r.top(), r.right(), r.top() + b)
+        p.drawLine(r.left(), r.bottom() - b, r.left(), r.bottom())
+        p.drawLine(r.left(), r.bottom(), r.left() + b, r.bottom())
+        # marca en el chaflán sup-izq
+        p.drawLine(r.left(), r.top() + ch, r.left() + ch, r.top())
+
+        if self._titulo:
+            f = QFont(self.font())
+            f.setPointSizeF(max(self.font().pointSizeF() - 1.5, 7.0))
+            f.setBold(True)
+            f.setLetterSpacing(QFont.SpacingType.AbsoluteSpacing, 2.0)
+            p.setFont(f)
+            p.setPen(acento)
+            base_y = r.top() + 22
+            p.drawText(r.left() + 16, base_y, self._titulo)
+            ancho = p.fontMetrics().horizontalAdvance(self._titulo)
+            p.setPen(QPen(QColor("#14435a"), 1))
+            p.drawLine(r.left() + 26 + ancho, r.top() + 16, r.right() - 24, r.top() + 16)
 
 
 class Trabajador(QObject):
@@ -64,10 +252,12 @@ class Trabajador(QObject):
 class VentanaPrincipal(QWidget):
     def __init__(self) -> None:
         super().__init__()
+        self.setObjectName("Root")
         self.setWindowTitle("Organizador de Archivos")
+        self.setStyleSheet(QSS_HUD)
         self.setAcceptDrops(True)
-        self.resize(640, 560)
-        self.setMinimumWidth(520)
+        self.resize(660, 600)
+        self.setMinimumWidth(540)
 
         icono = ASSETS / "icono.png"
         if icono.exists():
@@ -78,20 +268,30 @@ class VentanaPrincipal(QWidget):
         self._ultimo_plan: Plan | None = None
 
         raiz = QVBoxLayout(self)
-        raiz.setContentsMargins(18, 18, 18, 18)
-        raiz.setSpacing(12)
+        raiz.setContentsMargins(16, 16, 16, 16)
+        raiz.setSpacing(14)
 
-        titulo = QLabel("Organizador de Archivos")
-        titulo.setStyleSheet("font-size: 18px; font-weight: 600;")
+        # ---- cabecera ----------------------------------------------------
+        cabecera = MarcoHUD()
+        titulo = QLabel("ORGANIZADOR DE ARCHIVOS")
+        titulo.setObjectName("Titulo")
+        glow = QGraphicsDropShadowEffect(self)
+        glow.setColor(QColor(CIAN))
+        glow.setBlurRadius(22)
+        glow.setOffset(0, 0)
+        titulo.setGraphicsEffect(glow)
         subtitulo = QLabel(
             "Elige una carpeta (o arrastra una aquí) y separa su contenido "
             "en subcarpetas por tipo."
         )
+        subtitulo.setObjectName("Subtitulo")
         subtitulo.setWordWrap(True)
-        subtitulo.setStyleSheet("color: palette(mid);")
-        raiz.addWidget(titulo)
-        raiz.addWidget(subtitulo)
+        cabecera.cuerpo.addWidget(titulo)
+        cabecera.cuerpo.addWidget(subtitulo)
+        raiz.addWidget(cabecera)
 
+        # ---- carpeta ---------------------------------------------------
+        self.panel_carpeta = MarcoHUD("Carpeta objetivo")
         fila = QHBoxLayout()
         self.linea_carpeta = QLineEdit()
         self.linea_carpeta.setPlaceholderText("Ninguna carpeta seleccionada")
@@ -100,27 +300,28 @@ class VentanaPrincipal(QWidget):
         btn_elegir.clicked.connect(self._elegir_carpeta)
         fila.addWidget(self.linea_carpeta, 1)
         fila.addWidget(btn_elegir)
-        raiz.addLayout(fila)
+        self.panel_carpeta.cuerpo.addLayout(fila)
+        raiz.addWidget(self.panel_carpeta)
 
+        # ---- opciones ------------------------------------------------
+        panel_opciones = MarcoHUD("Parámetros")
         self.chk_subcarpetas = QCheckBox("Incluir subcarpetas (aplana su contenido)")
         self.chk_mover = QCheckBox("Mover los archivos (si lo desmarcas, los copia)")
         self.chk_mover.setChecked(True)
         self.chk_carpetas = QCheckBox('Meter también las carpetas sueltas en "Carpetas"')
         self.chk_ocultos = QCheckBox("Incluir archivos ocultos")
         for c in (self.chk_subcarpetas, self.chk_mover, self.chk_carpetas, self.chk_ocultos):
-            raiz.addWidget(c)
+            panel_opciones.cuerpo.addWidget(c)
         self.chk_subcarpetas.toggled.connect(self._sync_carpetas)
+        raiz.addWidget(panel_opciones)
 
-        linea = QFrame()
-        linea.setFrameShape(QFrame.Shape.HLine)
-        linea.setStyleSheet("color: palette(mid);")
-        raiz.addWidget(linea)
-
+        # ---- acciones ----------------------------------------------
         botones = QHBoxLayout()
+        botones.setSpacing(12)
         self.btn_simular = QPushButton("Simular")
         self.btn_simular.clicked.connect(lambda: self._arrancar(solo_simular=True))
         self.btn_organizar = QPushButton("Organizar")
-        self.btn_organizar.setStyleSheet("font-weight: 600;")
+        self.btn_organizar.setObjectName("Primario")
         self.btn_organizar.clicked.connect(self._confirmar_y_organizar)
         botones.addWidget(self.btn_simular)
         botones.addWidget(self.btn_organizar)
@@ -130,10 +331,13 @@ class VentanaPrincipal(QWidget):
         self.barra.setVisible(False)
         raiz.addWidget(self.barra)
 
+        # ---- registro --------------------------------------------
+        panel_registro = MarcoHUD("Registro")
         self.registro = QPlainTextEdit()
         self.registro.setReadOnly(True)
         self.registro.setPlaceholderText("Aquí aparece lo que se hará / se hizo.")
-        raiz.addWidget(self.registro, 1)
+        panel_registro.cuerpo.addWidget(self.registro)
+        raiz.addWidget(panel_registro, 1)
 
     # ---- carpeta -----------------------------------------------------------
 
@@ -148,7 +352,7 @@ class VentanaPrincipal(QWidget):
             self.linea_carpeta.setText(elegida)
 
     def _sync_carpetas(self, recursivo: bool) -> None:
-        # Con recursión, "carpetas sueltas" no aplica: se vacían y se limpian solas.
+        # Con recursion, "carpetas sueltas" no aplica: se vacian y se limpian solas.
         self.chk_carpetas.setEnabled(not recursivo)
         if recursivo:
             self.chk_carpetas.setChecked(False)
@@ -159,8 +363,13 @@ class VentanaPrincipal(QWidget):
         urls = e.mimeData().urls()
         if len(urls) == 1 and Path(urls[0].toLocalFile()).is_dir():
             e.acceptProposedAction()
+            self.panel_carpeta.set_resaltado(True)
+
+    def dragLeaveEvent(self, _e) -> None:  # noqa: N802
+        self.panel_carpeta.set_resaltado(False)
 
     def dropEvent(self, e: QDropEvent) -> None:  # noqa: N802
+        self.panel_carpeta.set_resaltado(False)
         ruta = Path(e.mimeData().urls()[0].toLocalFile())
         if ruta.is_dir():
             self.linea_carpeta.setText(str(ruta))
@@ -310,6 +519,7 @@ def main() -> int:
 
     app = QApplication(sys.argv)
     app.setApplicationName("Organizador de Archivos")
+    app.setStyleSheet(QSS_HUD)
     icono = ASSETS / "icono.png"
     if icono.exists():
         app.setWindowIcon(QIcon(str(icono)))

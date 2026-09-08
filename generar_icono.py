@@ -1,28 +1,28 @@
-"""Genera assets/icono.png — una carpeta con tres pestañas de colores."""
+"""Regenera assets/icono.png a partir de assets/icono.svg (anillo + símbolo de nodos).
 
+El icono se edita en `assets/icono.svg` (Inkscape). Este script solo lo
+rasteriza a PNG 256x256. Usa rsvg-convert; si no está, prueba con inkscape.
+"""
+
+import shutil
+import subprocess
+import sys
 from pathlib import Path
 
-from PIL import Image, ImageDraw
-
-TAM = 256
 ASSETS = Path(__file__).resolve().parent / "assets"
-ASSETS.mkdir(exist_ok=True)
+SVG = ASSETS / "icono.svg"
+PNG = ASSETS / "icono.png"
+TAM = 256
 
-img = Image.new("RGBA", (TAM, TAM), (0, 0, 0, 0))
-d = ImageDraw.Draw(img)
+if not SVG.exists():
+    sys.exit(f"No existe {SVG}")
 
-# Carpeta.
-cuerpo = (28, 78, 228, 208)
-pestana = (28, 58, 120, 88)
-d.rounded_rectangle(pestana, radius=10, fill=(70, 130, 210, 255))
-d.rounded_rectangle(cuerpo, radius=16, fill=(96, 160, 235, 255))
+if shutil.which("rsvg-convert"):
+    cmd = ["rsvg-convert", "-w", str(TAM), "-h", str(TAM), str(SVG), "-o", str(PNG)]
+elif shutil.which("inkscape"):
+    cmd = ["inkscape", str(SVG), "-w", str(TAM), "-h", str(TAM), "-o", str(PNG)]
+else:
+    sys.exit("Hace falta rsvg-convert (paquete librsvg) o inkscape.")
 
-# Tres "documentos" clasificados asomando.
-colores = [(240, 196, 82, 255), (231, 111, 81, 255), (138, 201, 123, 255)]
-x = 58
-for c in colores:
-    d.rounded_rectangle((x, 96, x + 40, 176), radius=6, fill=c)
-    x += 52
-
-img.save(ASSETS / "icono.png")
-print("escrito:", ASSETS / "icono.png")
+subprocess.run(cmd, check=True)
+print("escrito:", PNG)
