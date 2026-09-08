@@ -15,6 +15,15 @@ except Exception:
     Image = None
     ImageOps = None
 
+# HEIC/HEIF/AVIF (fotos de móviles modernos): pillow-heif añade el soporte a Pillow.
+try:
+    import pillow_heif
+
+    pillow_heif.register_heif_opener()
+    _HEIF_OK = True
+except Exception:
+    _HEIF_OK = False
+
 # RAW de cámara (LibRaw). Los que pidió el usuario van primero.
 EXT_RAW = {
     ".cr2", ".cr3",          # Canon
@@ -29,6 +38,10 @@ EXT_RAW = {
     ".raw", ".rwl", ".3fr", ".erf", ".mef", ".mos", ".mrw", ".x3f", ".iiq",
 }
 EXT_PILLOW = {".jpg", ".jpeg", ".png", ".webp", ".bmp", ".tif", ".tiff", ".gif", ".ppm"}
+# Formatos HEIF, solo si pillow-heif está disponible.
+EXT_HEIF = {".heic", ".heif", ".hif", ".avif"}
+if _HEIF_OK:
+    EXT_PILLOW |= EXT_HEIF
 
 # Formatos de salida ofrecidos.
 SALIDA = {
@@ -44,13 +57,18 @@ SALIDA = {
                               "params": {"compression": "tiff_lzw"}},
     "BMP":                   {"ext": "bmp",  "fmt": "BMP",  "sin_alpha": True, "params": {}},
 }
+if _HEIF_OK:
+    SALIDA["AVIF (moderno, ligero)"] = {"ext": "avif", "fmt": "AVIF", "sin_alpha": False,
+                                        "params": {"quality": 60}}
+    SALIDA["HEIC (moderno, ligero)"] = {"ext": "heic", "fmt": "HEIF", "sin_alpha": False,
+                                        "params": {"quality": 60}}
 
 LADOS_MAX = ["Tamaño original", "4000 px", "2560 px", "1920 px", "1280 px", "1024 px"]
 
 FILTRO_ARCHIVOS = (
-    "Imágenes y RAW (*.jpg *.jpeg *.png *.webp *.bmp *.tif *.tiff *.gif "
-    "*.cr2 *.cr3 *.nef *.nrw *.arw *.sr2 *.raf *.rw2 *.orf *.dng *.pef *.srw "
-    "*.raw *.3fr *.erf *.mrw *.x3f *.iiq);;Todos los archivos (*.*)"
+    "Imágenes y RAW ("
+    + " ".join(sorted(f"*{e}" for e in (EXT_PILLOW | EXT_RAW)))
+    + ");;Todos los archivos (*.*)"
 )
 
 
@@ -60,6 +78,10 @@ def raw_disponible():
 
 def pillow_disponible():
     return Image is not None
+
+
+def heif_disponible():
+    return _HEIF_OK
 
 
 def es_raw(ruta):
