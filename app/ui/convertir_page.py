@@ -21,6 +21,67 @@ from app.services import conversion, ffmpeg, imagenes
 from app.widgets.campos import SelectorCarpeta
 from app.widgets.tarjeta import Panel
 
+# Extensiones que sabe convertir la app, por categoría.
+EXT_IMAGEN = imagenes.EXT_PILLOW | imagenes.EXT_RAW
+
+
+def _categoria_de(ruta):
+    ext = os.path.splitext(ruta)[1].lower()
+    if ext in EXT_IMAGEN:
+        return "Imagen"
+    if ext in conversion.EXT_AUDIO:
+        return "Audio"
+    if ext in conversion.EXT_VIDEO:
+        return "Vídeo"
+    return ""
+
+
+def _filtro_completo():
+    """Un filtro que muestra TODO lo compatible primero, para que no dependa
+    del tipo de salida elegido (antes las RAW no salían si 'Tipo' era Vídeo)."""
+    imgs = " ".join(sorted(f"*{e}" for e in EXT_IMAGEN))
+    vid = " ".join(sorted(f"*{e}" for e in conversion.EXT_VIDEO))
+    aud = " ".join(sorted(f"*{e}" for e in conversion.EXT_AUDIO))
+    return (
+        f"Todo lo compatible ({imgs} {vid} {aud});;"
+        f"Imágenes y RAW ({imgs});;"
+        f"Vídeo ({vid});;"
+        f"Audio ({aud});;"
+        "Todos los archivos (*.*)"
+    )
+
+
+class _ListaArchivos(QListWidget):
+    """QListWidget que acepta archivos arrastrados desde el gestor de archivos."""
+
+    archivos_soltados = Signal(list)
+
+    def __init__(self):
+        super().__init__()
+        self.setSelectionMode(QAbstractItemView.ExtendedSelection)
+        self.setAcceptDrops(True)
+
+    def dragEnterEvent(self, e):
+        if e.mimeData().hasUrls():
+            e.acceptProposedAction()
+        else:
+            super().dragEnterEvent(e)
+
+    def dragMoveEvent(self, e):
+        if e.mimeData().hasUrls():
+            e.acceptProposedAction()
+        else:
+            super().dragMoveEvent(e)
+
+    def dropEvent(self, e):
+        if e.mimeData().hasUrls():
+            rutas = [u.toLocalFile() for u in e.mimeData().urls() if u.toLocalFile()]
+            if rutas:
+                self.archivos_soltados.emit(rutas)
+            e.acceptProposedAction()
+        else:
+            super().dropEvent(e)
+
 
 class ConvertirPage(QWidget):
     trabajo_terminado = Signal()
@@ -44,7 +105,8 @@ class ConvertirPage(QWidget):
         layout.addWidget(cabecera)
         sub = QLabel(
             "Convierte vídeo y audio (FFmpeg) o imágenes, incluidas RAW de cámara "
-            "(CR2/CR3, NEF, ARW, RAF, RW2, ORF…). Puedes añadir varios archivos."
+            "(CR2/CR3, NEF, ARW, RAF, RW2, ORF…). Arrastra los archivos a la lista "
+            "o usa «Añadir archivos…»."
         )
         sub.setWordWrap(True)
         sub.setStyleSheet("color:#8b97ad;font-size:11px;")
@@ -57,9 +119,9 @@ class ConvertirPage(QWidget):
 
         # --- Archivos ---
         arch = Panel("Archivos a convertir", borde="#3b82f6", acento="#93c5fd")
-        self.lista = QListWidget()
-        self.lista.setSelectionMode(QAbstractItemView.ExtendedSelection)
+        self.lista = _ListaArchivos()
         self.lista.setFixedHeight(150)
+        self.lista.archivos_soltados.connect(self._agregar_rutas)
         arch.layout_panel.addWidget(self.lista)
         fila_b = QHBoxLayout()
         b_add = QPushButton("Añadir archivos…")
@@ -148,21 +210,50 @@ class ConvertirPage(QWidget):
         raiz.setContentsMargins(0, 0, 0, 0)
         raiz.addWidget(scroll)
 
-    # -- lista de archivos -----------------------------------------------
+        self.setAcceptDrops(True)
 
-    def _filtro_archivos(self):
-        if self.combo_tipo.currentText() == "Imagen":
-            return imagenes.FILTRO_ARCHIVOS
-        return conversion.FILTRO_ARCHIVOS
+    # -- arrastrar y soltar sobre toda la página ------------------------
+
+    def dragEnterEvent(self, e):
+        if e.mimeData().hasUrls():
+            e.acceptProposedAction()
+
+    def dragMoveEvent(self, e):
+        if e.mimeData().hasUrls():
+            e.acceptProposedAction()
+
+    def dropEvent(self, e):
+        if e.mimeData().hasUrls():
+            self._agregar_rutas([u.toLocalFile() for u in e.mimeData().urls()])
+            e.acceptProposedAction()
+
+    # -- lista de archivos -----------------------------------------------
 
     def _añadir(self):
         rutas, _ = QFileDialog.getOpenFileNames(
-            self, "Elegir archivos", "", self._filtro_archivos()
+            self, "Elegir archivos", "", _filtro_completo()
         )
+        self._agregar_rutas(rutas)
+
+    def _agregar_rutas(self, rutas):
+        """Añade archivos a la lista (sin duplicar) y ajusta el 'Tipo' de salida
+        según lo que se añadió (imágenes/RAW → Imagen, etc.)."""
         existentes = {self.lista.item(i).text() for i in range(self.lista.count())}
+        nuevos = []
         for r in rutas:
-            if r not in existentes:
+            if r and os.path.isfile(r) and r not in existentes:
                 self.lista.addItem(r)
+                existentes.add(r)
+                nuevos.append(r)
+        if nuevos:
+            self._autoseleccionar_tipo(nuevos)
+
+    def _autoseleccionar_tipo(self, rutas):
+        cats = {c for c in (_categoria_de(r) for r in rutas) if c}
+        if len(cats) == 1:
+            cat = next(iter(cats))
+            if cat != self.combo_tipo.currentText():
+                self.combo_tipo.setCurrentText(cat)
 
     def _quitar(self):
         for item in self.lista.selectedItems():
