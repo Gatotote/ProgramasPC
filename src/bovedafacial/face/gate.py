@@ -55,9 +55,11 @@ def verify_live(
     window: int = 20,
     scripted=None,
     on_progress=None,
+    on_frame=None,
 ) -> GateResult:
     """Devuelve GateResult. `scripted` opcional: una LivenessSession con retos
-    guionados; si se pasa, su `.passed` sustituye a la liveness por movimiento."""
+    guionados; si se pasa, su `.passed` sustituye a la liveness por movimiento.
+    `on_frame(bgr)` recibe cada fotograma (para la vista previa de la GUI)."""
     thr = threshold if threshold is not None else template.threshold
     scores: deque = deque(maxlen=window)
     yaws: deque = deque(maxlen=window)
@@ -68,7 +70,10 @@ def verify_live(
 
     with camera:
         while time.monotonic() - t0 < timeout:
-            face = engine.primary_face(camera.read())
+            frame = camera.read()
+            if on_frame is not None:
+                on_frame(frame)
+            face = engine.primary_face(frame)
             frames += 1
             if scripted is not None:
                 scripted.update(face)
@@ -103,7 +108,7 @@ def verify_live(
     return GateResult(False, "pocos_frames", _best(scores), moved, frames)
 
 
-def make_gate(engine=None, camera_factory=None, *, on_progress=None, **verify_kw):
+def make_gate(engine=None, camera_factory=None, *, on_progress=None, on_frame=None, **verify_kw):
     """Devuelve un `face_gate(session) -> GateResult` para pasar a `open_vault`.
     Importa el motor y la cámara de forma perezosa."""
     from .camera import default_camera
@@ -118,6 +123,7 @@ def make_gate(engine=None, camera_factory=None, *, on_progress=None, **verify_kw
             return GateResult(True, "sin_plantilla", liveness_passed=True)
         eng.load()
         cam = camera_factory() if camera_factory is not None else default_camera()
-        return verify_live(eng, cam, template, on_progress=on_progress, **verify_kw)
+        return verify_live(eng, cam, template, on_progress=on_progress,
+                           on_frame=on_frame, **verify_kw)
 
     return gate

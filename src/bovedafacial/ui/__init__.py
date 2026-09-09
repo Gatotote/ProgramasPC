@@ -1,5 +1,14 @@
-"""Interfaz PySide6 (Fase 4): asistente de primer arranque, vista de desbloqueo
-(PIN + cámara), ventana principal con el árbol de la bóveda y ajustes.
+"""Interfaz PySide6 «Bóveda Inteligente».
 
-Requiere:  uv sync --extra gui
+Pieza 1 (hecha): tema, asistente de primer arranque, ventana de desbloqueo
+(PIN + rostro con vista previa), enrolado.
+Pieza 2 (pendiente): ventana principal — barra lateral, tarjetas por categoría,
+panel de actividad, editor de elementos, botón «Agregar».
+
+Requiere:  uv sync --extra gui --extra face
+Se lanza con:  bovedafacial-gui
 """
+
+from .app import main
+
+__all__ = ["main"]

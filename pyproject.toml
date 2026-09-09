@@ -28,6 +28,7 @@ gui = [
 
 [project.scripts]
 bovedafacial = "bovedafacial.cli:main"
+bovedafacial-gui = "bovedafacial.ui.app:main"
 
 [dependency-groups]
 dev = ["pytest>=8"]
