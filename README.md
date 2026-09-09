@@ -33,8 +33,28 @@ desbloqueo forzado.
 | 2 | Motor facial (antelopev2): cámara, embeddings, enrolado, liveness | ✅ |
 | 3 | Desbloqueo completo: `open_vault` (PIN → MK → gate facial), backoff | ✅ |
 | 4a | Modelo de datos: elementos tipados + registro de actividad + generador | ✅ |
-| 4b | GUI PySide6: asistente, ventana principal, vista de desbloqueo | ⏳ |
-| 5 | Auto-bloqueo, exclusión Baloo, `shred` del original, empaquetado | ⏳ |
+| 4b·1 | GUI: tema, asistente de primer arranque, ventana de desbloqueo | ✅ |
+| 4b·2 | GUI: ventana principal (barra lateral, tarjetas, actividad, editor, FAB) | ✅ |
+| 4b·3 | GUI: vistas Archivos y Fotografías (abrir en RAM, galería) | ⏳ |
+| 5 | Auto-bloqueo endurecido, exclusión Baloo, `shred` del original, empaquetado | ⏳ |
+
+### GUI (`bovedafacial-gui`)
+
+```bash
+uv sync --extra gui --extra face
+uv run bovedafacial-gui          # asistente si no hay bóveda; si no, desbloqueo
+uv run bovedafacial-gui --demo   # bóveda temporal con datos de ejemplo, ventana principal directa
+```
+
+- `ui/theme.py` QSS latón/acero (claro + oscuro, sigue al sistema).
+- `ui/setup_wizard.py` 4 pasos: ubicación → PIN → rostro (o omitir) → frase.
+- `ui/unlock_view.py` PIN + cámara + progreso del gate facial; alterna a la frase.
+- `ui/main_window.py` barra lateral (7 secciones) + tarjetas + panel de actividad
+  + indicador 🟢🟡🔴 (`ui/status.py`) + botón «Agregar» + **bloqueo por
+  inactividad** (`policy.auto_lock_seconds`).
+- `ui/views/` Inicio · Contraseñas/Finanzas (`ItemsView` genérica) · Reportes ·
+  Configuración. `ui/item_editor.py` genera el formulario desde `FIELD_SPECS`
+  (ojo/copiar/generar en los campos secretos).
 
 ### Elementos tipados y actividad (Fase 4a)
 

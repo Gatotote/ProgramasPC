@@ -1,8 +1,8 @@
 """Punto de entrada de la GUI:  bovedafacial-gui  [--vault RUTA]
 
-Pieza 1: asistente de primer arranque + ventana de desbloqueo. Tras abrir la
-bóveda se muestra una ventana provisional con el estado (la ventana principal
-llega en la pieza 2).
+Flujo: asistente si no hay bóveda → ventana de desbloqueo (PIN + rostro) →
+ventana principal. Al bloquear (manual o por inactividad) se vuelve al
+desbloqueo.
 """
 
 from __future__ import annotations
@@ -10,64 +10,82 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-from PySide6.QtWidgets import QApplication, QLabel, QVBoxLayout, QWidget
+from PySide6.QtWidgets import QApplication
 
 from . import config, theme
-from .widgets import hline
 
 
-class _PlaceholderMain(QWidget):
-    def __init__(self, session) -> None:
-        super().__init__()
-        self.session = session
-        self.setWindowTitle("Bóveda Inteligente")
-        self.resize(560, 380)
-        v = QVBoxLayout(self)
-        v.setContentsMargins(24, 24, 24, 24)
-        v.setSpacing(10)
+class _Controller:
+    def __init__(self, vault_path: Path) -> None:
+        self.vault_path = vault_path
+        self.unlock = None
+        self.main = None
 
-        h = QLabel("Bóveda abierta ✓")
-        h.setProperty("role", "h1")
-        v.addWidget(h)
-        v.addWidget(hline())
+    def show_unlock(self) -> None:
+        from .unlock_view import UnlockWindow
 
-        s = session.activity_summary()
-        st = session.storage_stats()
-        disco = (f"En disco: {st['on_disk_bytes'] / 1e6:.1f} MB · "
-                 f"{st['files']} archivos · {st['items']} elementos")
-        lines = [
-            f"Elementos añadidos hoy: {s['items_added_today']}",
-            f"Archivos añadidos hoy: {s['files_added_today']}",
-            f"Intentos bloqueados (24 h): {s['blocked_attempts_24h']}",
-            disco,
-        ]
-        body = QLabel("\n".join(lines))
-        body.setProperty("role", "mono")
-        v.addWidget(body)
-        v.addStretch(1)
-        note = QLabel("La ventana principal (barra lateral, tarjetas, panel de "
-                      "actividad) llega en la siguiente pieza.")
-        note.setProperty("role", "dim")
-        note.setWordWrap(True)
-        v.addWidget(note)
+        self.main = None
+        self.unlock = UnlockWindow(self.vault_path)
+        self.unlock.unlocked.connect(self._on_unlocked)
+        self.unlock.show()
 
-    def closeEvent(self, ev):  # noqa: N802
-        try:
-            self.session.close()
-        finally:
-            super().closeEvent(ev)
+    def _on_unlocked(self, session) -> None:
+        from .main_window import MainWindow
+
+        self.main = MainWindow(session)
+        self.main.locked.connect(self._on_locked)
+        self.main.show()
+        if self.unlock is not None:
+            self.unlock.close()
+            self.unlock = None
+
+    def _on_locked(self) -> None:
+        self.show_unlock()
+
+
+def _initial_theme(app: QApplication) -> None:
+    pref = config.get("theme", "system")
+    theme.apply(app, dark=None if pref == "system" else pref == "dark")
+
+
+def _demo() -> int:
+    """--demo: bóveda temporal con datos de ejemplo y abre directo la ventana
+    principal. Para ver la GUI sin configurar nada."""
+    import tempfile
+
+    from ..vault import create_vault, open_vault
+
+    app = QApplication(sys.argv)
+    app.setApplicationDisplayName("Bóveda Inteligente (demo)")
+    _initial_theme(app)
+    d = Path(tempfile.mkdtemp(prefix="boveda-demo-"))
+    kdf = {"type": "argon2id", "time_cost": 1, "memory_cost": 8192, "parallelism": 1}
+    _, s = create_vault(d / "demo", "demo-demo-demo", kdf=kdf)
+    s.close()
+    s = open_vault(d / "demo.vault", pin="demo-demo-demo")
+    s.add_item("/Contraseñas", "password", "Correo principal", {"usuario": "genaro@…", "password": "corta"})
+    s.add_item("/Contraseñas", "password", "GitHub", {"usuario": "usuario.ejemplo", "password": "ContraseñaDeEjemplo#2026"})
+    s.add_item("/Finanzas", "account", "BBVA · Cheques", {"institucion": "BBVA", "numero": "000004821", "saldo": "148 200"})
+    s.add_item("/Finanzas", "card", "Visa Oro", {"numero": "4111111111111174", "vence": "07/27", "cvv": "123"})
+    s.add_item("/Familiar", "contact", "Ana", {"parentesco": "esposa", "telefono": "55…"})
+    from .main_window import MainWindow
+
+    w = MainWindow(s)
+    w.show()
+    app._w = w
+    return app.exec()
 
 
 def main() -> int:
-    vault_override = None
     args = sys.argv[1:]
-    if "--vault" in args:
-        vault_override = Path(args[args.index("--vault") + 1])
+    if "--demo" in args:
+        return _demo()
+    vault_override = Path(args[args.index("--vault") + 1]) if "--vault" in args else None
 
     app = QApplication(sys.argv)
     app.setApplicationName("Bóveda Inteligente")
     app.setApplicationDisplayName("Bóveda Inteligente")
-    theme.apply(app)
+    _initial_theme(app)
 
     vault_path = vault_override or config.vault_path()
 
@@ -82,18 +100,9 @@ def main() -> int:
         vault_path = wiz.vault_path
         config.set_vault_path(vault_path)
 
-    from .unlock_view import UnlockWindow
-
-    holder: dict = {}
-    unlock = UnlockWindow(vault_path)
-
-    def _on_unlocked(session):
-        holder["main"] = _PlaceholderMain(session)
-        holder["main"].show()
-        unlock.close()
-
-    unlock.unlocked.connect(_on_unlocked)
-    unlock.show()
+    ctrl = _Controller(vault_path)
+    ctrl.show_unlock()
+    app._ctrl = ctrl  # mantener viva la referencia
     return app.exec()
 
 

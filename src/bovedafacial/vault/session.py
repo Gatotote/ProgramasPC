@@ -269,6 +269,16 @@ class Session:
             "by_category": by_top,
         }
 
+    # --- política y respaldo ------------------------------------------
+    def set_policy(self, **changes) -> None:
+        pol = self.header.setdefault("policy", {})
+        pol.update({k: v for k, v in changes.items() if v is not None})
+        C.save_header(self.path, self.header)
+
+    def mark_backup(self) -> None:
+        self.header.setdefault("stats", {})["last_backup"] = time.time()
+        C.save_header(self.path, self.header)
+
     def save(self) -> None:
         if self._dirty and not self._closed:
             C.encrypt_index(self.path, self.mk, self.index)
