@@ -117,7 +117,7 @@ def install_desktop_entry() -> Path:
         f"Exec={_gui_executable()}\n"
         "Icon=bovedafacial\n"
         "Terminal=false\n"
-        "Categories=Utility;Security;\n"
+        "Categories=Utility;\n"
         "Keywords=boveda;vault;contraseñas;password;caja fuerte;cifrado;\n"
         "StartupNotify=true\n"
     )
