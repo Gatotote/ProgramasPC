@@ -68,6 +68,16 @@ def _demo() -> int:
     s.add_item("/Finanzas", "account", "BBVA · Cheques", {"institucion": "BBVA", "numero": "000004821", "saldo": "148 200"})
     s.add_item("/Finanzas", "card", "Visa Oro", {"numero": "4111111111111174", "vence": "07/27", "cvv": "123"})
     s.add_item("/Familiar", "contact", "Ana", {"parentesco": "esposa", "telefono": "55…"})
+    doc = d / "Contrato de renta 2025.txt"
+    doc.write_text("Contrato de arrendamiento (ejemplo).\n")
+    s.import_path(doc, "/Documentos")
+    from PySide6.QtGui import QColor, QImage
+    for i, tint in enumerate((QColor("#8a5a2b"), QColor("#3b6ea5"), QColor("#5a7d4a"))):
+        img = QImage(320, 240, QImage.Format.Format_RGB888)
+        img.fill(tint)
+        p = d / f"recuerdo_{i + 1}.png"
+        img.save(str(p))
+        s.import_path(p, "/Fotografias")
     from .main_window import MainWindow
 
     w = MainWindow(s)

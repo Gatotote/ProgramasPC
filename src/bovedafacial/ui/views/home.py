@@ -18,11 +18,13 @@ from ...vault import ItemKind
 from .. import status as status_mod
 from ..widgets import Banner, Card, StatTile, section_label
 
+# sin emoji en las tarjetas: en este KDE el glifo de color deja un halo sobre el
+# título en negrita. La iconografía vive en la barra lateral.
 CATEGORIES = [
-    ("Documentos", "📁", "files", None),
-    ("Contraseñas", "🔑", "items", [ItemKind.PASSWORD]),
-    ("Información Financiera", "💳", "items", [ItemKind.ACCOUNT, ItemKind.CARD]),
-    ("Información Familiar", "👨‍👩‍👧", "items", [ItemKind.CONTACT, ItemKind.WILL, ItemKind.INSURANCE]),
+    ("Documentos", "", "files", None),
+    ("Contraseñas", "", "items", [ItemKind.PASSWORD]),
+    ("Información Financiera", "", "items", [ItemKind.ACCOUNT, ItemKind.CARD]),
+    ("Información Familiar", "", "items", [ItemKind.CONTACT, ItemKind.WILL, ItemKind.INSURANCE]),
 ]
 NAV_FOR = {"Documentos": "Archivos", "Contraseñas": "Contraseñas",
            "Información Financiera": "Finanzas", "Información Familiar": "Reportes"}
@@ -75,30 +77,21 @@ class HomeView(QWidget):
     def _category_card(self, name, icon, src, kinds, stor) -> Card:
         card = Card(name, icon)
         if src == "files":
-            total = stor["files"]
-            card.head.insertWidget(card.head.count() - 1,
-                                   _count(_plural(total, "archivo", "archivos")))
-            for label in ("Actas", "Contratos", "Identificaciones"):
-                card.body.addWidget(QLabel(f"·  {label}"))
+            card.set_badge(_plural(stor["files"], "archivo", "archivos"))
+            for lbl in ("Actas", "Contratos", "Identificaciones"):
+                card.body.addWidget(QLabel(f"·  {lbl}"))
         else:
             n = 0
             for k in kinds:
                 rows = self.session.list_items("/", kind=k)
                 n += len(rows)
                 card.body.addWidget(QLabel(f"·  {_kind_plural(k)}  ({len(rows)})"))
-            card.head.insertWidget(card.head.count() - 1,
-                                   _count(_plural(n, "elemento", "elementos")))
+            card.set_badge(_plural(n, "elemento", "elementos"))
         btn = QPushButton(f"Ver {name.split()[0].lower()}")
         btn.setProperty("role", "link")
         btn.clicked.connect(lambda: self.navigate.emit(NAV_FOR[name]))
         card.body.addWidget(btn)
         return card
-
-
-def _count(text: str) -> QLabel:
-    lbl = QLabel(text)
-    lbl.setProperty("role", "dim")
-    return lbl
 
 
 def _plural(n: int, sing: str, plur: str) -> str:

@@ -35,8 +35,8 @@ desbloqueo forzado.
 | 4a | Modelo de datos: elementos tipados + registro de actividad + generador | ✅ |
 | 4b·1 | GUI: tema, asistente de primer arranque, ventana de desbloqueo | ✅ |
 | 4b·2 | GUI: ventana principal (barra lateral, tarjetas, actividad, editor, FAB) | ✅ |
-| 4b·3 | GUI: vistas Archivos y Fotografías (abrir en RAM, galería) | ⏳ |
-| 5 | Auto-bloqueo endurecido, exclusión Baloo, `shred` del original, empaquetado | ⏳ |
+| 4b·3 | GUI: Archivos (abrir en RAM) + Fotografías (galería) + `Session.checkout` | ✅ |
+| 5 | Exclusión Baloo, `shred` del original al importar, empaquetado (.desktop) | ⏳ |
 
 ### GUI (`bovedafacial-gui`)
 
@@ -52,9 +52,18 @@ uv run bovedafacial-gui --demo   # bóveda temporal con datos de ejemplo, ventan
 - `ui/main_window.py` barra lateral (7 secciones) + tarjetas + panel de actividad
   + indicador 🟢🟡🔴 (`ui/status.py`) + botón «Agregar» + **bloqueo por
   inactividad** (`policy.auto_lock_seconds`).
-- `ui/views/` Inicio · Contraseñas/Finanzas (`ItemsView` genérica) · Reportes ·
-  Configuración. `ui/item_editor.py` genera el formulario desde `FIELD_SPECS`
-  (ojo/copiar/generar en los campos secretos).
+- `ui/views/` Inicio · Contraseñas/Finanzas (`ItemsView` genérica) · **Archivos**
+  (árbol + importar + abrir/exportar) · **Fotografías** (galería con miniaturas
+  descifradas en un hilo) · Reportes · Configuración. `ui/item_editor.py` genera
+  el formulario desde `FIELD_SPECS` (ojo/copiar/generar en los campos secretos).
+
+### Abrir un archivo (`Session.checkout`)
+
+`checkout(vpath)` descifra un archivo (o el adjunto de un elemento) a
+`/dev/shm/bovedafacial-<id>-*/` (perms 0700/0600) y devuelve la ruta; la GUI lo
+lanza con `QDesktopServices.openUrl`. Al cerrar la sesión (bloqueo manual o por
+inactividad) `checkin_all()` re-cifra los que cambiaron y `crypto/shred.py`
+sobrescribe y borra el área. Nada en claro toca el disco físico.
 
 ### Elementos tipados y actividad (Fase 4a)
 

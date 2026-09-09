@@ -21,8 +21,10 @@ from PySide6.QtWidgets import (
 from ..vault import ItemKind
 from . import status as status_mod
 from . import theme
+from .views.files import FilesView
 from .views.home import HomeView
 from .views.items_view import ItemsView
+from .views.photos import PhotosView
 from .views.reports import ReportsView
 from .views.settings import SettingsView
 from .widgets import hline, scroll_page
@@ -93,6 +95,8 @@ class MainWindow(QWidget):
                                    base_dir="/Contraseñas")
         self.finances = ItemsView(session, [ItemKind.ACCOUNT, ItemKind.CARD],
                                   "Información Financiera", base_dir="/Finanzas")
+        self.files = FilesView(session)
+        self.photos = PhotosView(session)
         self.reports = ReportsView(session)
         self.settings = SettingsView(session)
         self.settings.themeChanged.connect(self._apply_theme)
@@ -100,10 +104,10 @@ class MainWindow(QWidget):
 
         self._views = {
             "Inicio": scroll_page(self.home),
-            "Archivos": self._soon("Archivos", "explorador cifrado con abrir en RAM"),
+            "Archivos": self.files,
             "Contraseñas": self.passwords,
             "Finanzas": self.finances,
-            "Fotografías": self._soon("Fotografías", "galería con miniaturas cifradas"),
+            "Fotografías": self.photos,
             "Reportes": scroll_page(self.reports),
             "Configuración": scroll_page(self.settings),
         }
@@ -183,10 +187,10 @@ class MainWindow(QWidget):
         self._goto(target)
         if target == "Contraseñas":
             self.passwords._new(ItemKind.PASSWORD)
+        elif label == "Carpeta":
+            self.files._import_folder()
         else:
-            QMessageBox.information(self, label,
-                                   "Importar archivos llega en la pieza 2b "
-                                   "(explorador + abrir en RAM).")
+            self.files._import_files()
 
     # ---------- tema ----------
     def _apply_theme(self, value: str) -> None:
@@ -238,10 +242,14 @@ class MainWindow(QWidget):
             return
         self._locking = True
         try:
+            self.photos.shutdown()
+        except Exception:  # noqa: BLE001
+            pass
+        try:
             self.session.log_event("lock")
         except Exception:  # noqa: BLE001
             pass
-        self.session.close()
+        self.session.close()   # re-cifra check-outs y borra el área en RAM
         self.locked.emit()
         self.close()
 
@@ -254,21 +262,9 @@ class MainWindow(QWidget):
     def closeEvent(self, ev):  # noqa: N802
         try:
             QApplication.instance().removeEventFilter(self)
+            self.photos.shutdown()
             if not self.session._closed:
                 self.session.close()
         except Exception:  # noqa: BLE001
             pass
         super().closeEvent(ev)
-
-    def _soon(self, name: str, what: str) -> QWidget:
-        w = QWidget()
-        v = QVBoxLayout(w)
-        v.setContentsMargins(24, 22, 24, 24)
-        t = QLabel(name)
-        t.setProperty("role", "h1")
-        v.addWidget(t)
-        d = QLabel(f"Pendiente (pieza 2b): {what}.")
-        d.setProperty("role", "dim")
-        v.addWidget(d)
-        v.addStretch(1)
-        return w

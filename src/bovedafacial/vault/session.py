@@ -10,11 +10,13 @@ inyecta la capa de arriba (así `vault/` no depende de `face/`).
 from __future__ import annotations
 
 import os
+import tempfile
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 
 from ..crypto import container as C
+from ..crypto import shred
 from ..crypto.keyslots import (
     DEFAULT_KDF,
     KeySlot,
@@ -79,6 +81,8 @@ class Session:
     index: dict
     _dirty: bool = False
     _closed: bool = False
+    _workarea: Path | None = None
+    _checkouts: dict = field(default_factory=dict)   # vpath -> Path en claro
 
     # --- propiedades internas ---------------------------------------------
     @property
@@ -155,6 +159,77 @@ class Session:
             C.delete_object(self.path, self.mk, descriptor)
         self._dirty = True
         self.log_event(audit.ITEM_REMOVE, vpath)
+
+    # --- check-out a memoria (para abrir un archivo con otro programa) -----
+    def _ensure_workarea(self) -> Path:
+        if self._workarea and self._workarea.exists():
+            return self._workarea
+        base = Path("/dev/shm") if os.path.isdir("/dev/shm") and os.access("/dev/shm", os.W_OK) \
+            else Path(tempfile.gettempdir())
+        vid = self.header.get("vault_id", "x")
+        wa = Path(tempfile.mkdtemp(prefix=f"bovedafacial-{vid}-", dir=base))
+        os.chmod(wa, 0o700)
+        self._workarea = wa
+        return wa
+
+    @_translate
+    def checkout(self, vpath: str) -> Path:
+        """Descifra un archivo (o adjunto) a un área temporal en RAM y devuelve
+        su ruta. Se re-cifra/borra al cerrar la sesión (`close`)."""
+        cached = self._checkouts.get(vpath)
+        if cached and cached.exists():
+            return cached
+        node = tree.get_node(self.index, vpath)
+        if node.get("type") == "file":
+            data, name, mtime = (C.read_object(self.path, self.mk, node),
+                                 vpath.rsplit("/", 1)[-1], node.get("mtime", time.time()))
+        elif node.get("type") == "item":
+            atts = node.get("attachments", [])
+            if not atts:
+                raise VaultError("El elemento no tiene adjuntos.")
+            desc = atts[0]
+            data, name, mtime = (C.read_object(self.path, self.mk, desc),
+                                 desc.get("name", "adjunto"), node.get("modified", time.time()))
+        else:
+            raise VaultError(f"/{vpath.strip('/')} no se puede abrir.")
+        wa = self._ensure_workarea()
+        out = wa / f"{abs(hash(vpath)) % 10_000:04d}-{name}"
+        out.write_bytes(data)
+        os.chmod(out, 0o600)
+        try:
+            os.utime(out, (mtime, mtime))
+        except OSError:
+            pass
+        self._checkouts[vpath] = out
+        self.log_event(audit.FILE_OPEN, name)
+        return out
+
+    def checkin_all(self) -> None:
+        """Re-cifra los archivos con cambios y borra el área temporal."""
+        for vpath, path in list(self._checkouts.items()):
+            try:
+                if path.exists():
+                    node = tree.get_node(self.index, vpath)
+                    if node.get("type") == "file":
+                        cur = path.read_bytes()
+                        from hashlib import sha256
+                        if sha256(cur).hexdigest() != node.get("sha256"):
+                            self._replace_file_object(vpath, node, cur)
+            except Exception:  # noqa: BLE001
+                pass
+        if self._workarea:
+            shred.shred_tree(self._workarea)
+            self._workarea = None
+        self._checkouts.clear()
+
+    def _replace_file_object(self, vpath: str, node: dict, data: bytes) -> None:
+        C.delete_object(self.path, self.mk, node)
+        desc = C.write_object(self.path, self.mk, C.new_object_id(), data, self.chunk_size)
+        parent = tree.get_node(self.index, vpath.rsplit("/", 1)[0] or "/")
+        entry = parent["entries"][vpath.rsplit("/", 1)[-1]]
+        entry.update(desc)
+        entry["mtime"] = time.time()
+        self._dirty = True
 
     # --- elementos tipados (contraseñas, tarjetas, cuentas, ...) ----------
     @_translate
@@ -287,6 +362,10 @@ class Session:
     def close(self) -> None:
         if self._closed:
             return
+        try:
+            self.checkin_all()   # re-cifra cambios y borra el área en RAM
+        except Exception:  # noqa: BLE001
+            pass
         self.save()
         for i in range(len(self._mk)):   # borrado best-effort (Python no garantiza)
             self._mk[i] = 0

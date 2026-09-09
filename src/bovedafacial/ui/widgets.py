@@ -78,7 +78,8 @@ def pill(text: str, kind: str = "neutral") -> QLabel:
 
 
 class Card(QFrame):
-    """Tarjeta con título opcional; añade contenido a `self.body`."""
+    """Tarjeta con título opcional; añade contenido a `self.body`.
+    `set_badge()` pone un texto tenue a la derecha del título."""
 
     def __init__(self, title: str = "", icon: str = "", parent=None) -> None:
         super().__init__(parent)
@@ -86,22 +87,31 @@ class Card(QFrame):
         outer = QVBoxLayout(self)
         outer.setContentsMargins(18, 16, 18, 16)
         outer.setSpacing(10)
-        if title:
+        self._badge = None
+        if title or icon:
             head = QHBoxLayout()
-            head.setSpacing(10)
+            head.setSpacing(9)
             if icon:
                 ic = QLabel(icon)
-                ic.setStyleSheet("font-size:18px;")
+                ic.setStyleSheet("font-size:17px;font-weight:400;")
+                ic.setFixedWidth(24)
                 head.addWidget(ic)
             h = QLabel(title)
             h.setProperty("role", "h2")
             head.addWidget(h)
             head.addStretch(1)
+            self._badge = QLabel("")
+            self._badge.setProperty("role", "dim")
+            head.addWidget(self._badge)
             self.head = head
             outer.addLayout(head)
         self.body = QVBoxLayout()
         self.body.setSpacing(6)
         outer.addLayout(self.body)
+
+    def set_badge(self, text: str) -> None:
+        if self._badge is not None:
+            self._badge.setText(text)
 
 
 class StatTile(QFrame):
