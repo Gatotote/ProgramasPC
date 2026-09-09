@@ -22,20 +22,23 @@ class ReportsView(QWidget):
     def __init__(self, session, parent=None) -> None:
         super().__init__(parent)
         self.session = session
-        self._root = QVBoxLayout(self)
-        self._root.setContentsMargins(24, 22, 24, 24)
-        self._root.setSpacing(16)
+        self._outer = QVBoxLayout(self)
+        self._outer.setContentsMargins(0, 0, 0, 0)
+        self._body: QWidget | None = None
         self.refresh()
 
     def refresh(self) -> None:
-        while self._root.count():
-            it = self._root.takeAt(0)
-            if it.widget():
-                it.widget().deleteLater()
+        if self._body is not None:
+            self._body.setParent(None)
+            self._body.deleteLater()
+        self._body = QWidget()
+        root = QVBoxLayout(self._body)
+        root.setContentsMargins(24, 22, 24, 24)
+        root.setSpacing(16)
 
         title = QLabel("Reportes")
         title.setProperty("role", "h1")
-        self._root.addWidget(title)
+        root.addWidget(title)
 
         s = status_mod.compute(self.session)
         banner = Banner()
@@ -43,7 +46,7 @@ class ReportsView(QWidget):
                    f"{sum(1 for sev, _ in s['reasons'] if sev == 'ok')} correctas · "
                    f"{sum(1 for sev, _ in s['reasons'] if sev != 'ok')} requieren atención",
                    s["level"])
-        self._root.addWidget(banner)
+        root.addWidget(banner)
 
         checks = Card("Comprobaciones")
         for sev, text in s["reasons"]:
@@ -56,14 +59,15 @@ class ReportsView(QWidget):
             lbl.setWordWrap(True)
             row.addWidget(lbl, 1)
             checks.body.addLayout(row)
-        self._root.addWidget(checks)
+        root.addWidget(checks)
 
         cols = QHBoxLayout()
         cols.setSpacing(14)
         cols.addWidget(self._inventory())
         cols.addWidget(self._storage())
-        self._root.addLayout(cols)
-        self._root.addStretch(1)
+        root.addLayout(cols)
+        root.addStretch(1)
+        self._outer.addWidget(self._body)
 
     def _inventory(self) -> Card:
         card = Card("Inventario por tipo")

@@ -36,31 +36,36 @@ class HomeView(QWidget):
     def __init__(self, session, parent=None) -> None:
         super().__init__(parent)
         self.session = session
-        self._root = QVBoxLayout(self)
-        self._root.setContentsMargins(24, 22, 24, 72)
-        self._root.setSpacing(16)
+        self._outer = QVBoxLayout(self)
+        self._outer.setContentsMargins(0, 0, 0, 0)
+        self._body: QWidget | None = None
         self.refresh()
 
     def refresh(self) -> None:
-        while self._root.count():
-            item = self._root.takeAt(0)
-            if item.widget():
-                item.widget().deleteLater()
+        # se reconstruye TODO en un único widget que se reemplaza: así no quedan
+        # sub-layouts huérfanos pintando por debajo (fantasmas entre tarjetas).
+        if self._body is not None:
+            self._body.setParent(None)
+            self._body.deleteLater()
+        self._body = QWidget()
+        v = QVBoxLayout(self._body)
+        v.setContentsMargins(24, 22, 24, 72)
+        v.setSpacing(16)
 
         s = status_mod.compute(self.session)
         banner = Banner()
         detail = " · ".join(t for _, t in s["reasons"][:3])
         banner.set(s["dot"], f"Estado: {s['label']}", detail, s["level"])
-        self._root.addWidget(banner)
+        v.addWidget(banner)
 
         grid = QGridLayout()
         grid.setSpacing(14)
         stor = self.session.storage_stats()
         for idx, (name, icon, src, kinds) in enumerate(CATEGORIES):
             grid.addWidget(self._category_card(name, icon, src, kinds, stor), idx // 2, idx % 2)
-        self._root.addLayout(grid)
+        v.addLayout(grid)
 
-        self._root.addWidget(section_label("Actividad"))
+        v.addWidget(section_label("Actividad"))
         summ = self.session.activity_summary()
         tiles = QHBoxLayout()
         tiles.setSpacing(14)
@@ -71,8 +76,9 @@ class HomeView(QWidget):
                                  "últimas 24 h", flag=summ["blocked_attempts_24h"] > 0))
         tiles.addWidget(StatTile("Espacio usado", f"{stor['on_disk_bytes'] / 1e6:.1f} MB",
                                  f"{stor['files']} archivos · {stor['items']} elementos"))
-        self._root.addLayout(tiles)
-        self._root.addStretch(1)
+        v.addLayout(tiles)
+        v.addStretch(1)
+        self._outer.addWidget(self._body)
 
     def _category_card(self, name, icon, src, kinds, stor) -> Card:
         card = Card(name, icon)
