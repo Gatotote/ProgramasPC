@@ -1,6 +1,7 @@
 import os
 
-from PySide6.QtCore import Qt, Signal
+from PySide6.QtCore import Qt, QUrl, Signal
+from PySide6.QtGui import QDesktopServices
 from PySide6.QtWidgets import (
     QAbstractItemView,
     QComboBox,
@@ -90,6 +91,7 @@ class ConvertirPage(QWidget):
         super().__init__()
         self.worker = None
         self._formato_actual = ""
+        self._ultimas_salidas = []
         s = config.cargar_settings()
 
         scroll = QScrollArea()
@@ -342,6 +344,7 @@ class ConvertirPage(QWidget):
                 return
             self.worker = conversion.ConversionWorker(entradas, carpeta, self._formato_actual)
 
+        self._ultimas_salidas = []
         self.btn_convertir.setEnabled(False)
         self.btn_cancelar.setEnabled(True)
         self.barra.setValue(0)
@@ -368,6 +371,8 @@ class ConvertirPage(QWidget):
             self.lbl_sub.setText(texto)
 
     def _al_terminar_uno(self, salida, ok):
+        if ok:
+            self._ultimas_salidas.append(salida)
         config.agregar_historial(
             "conversion",
             os.path.basename(salida) if ok else "Conversión fallida",
@@ -388,11 +393,40 @@ class ConvertirPage(QWidget):
         if errores and errores[0][0] == "":
             QMessageBox.critical(self, "Error", errores[0][1])
             return
+
+        salidas = list(self._ultimas_salidas)
+        carpeta = self.sel_carpeta.valor()
+
         if errores:
+            icono = QMessageBox.Warning
+            titulo = "Terminó con errores"
             det = "\n".join(f"• {a}: {m}" for a, m in errores[:5])
-            QMessageBox.warning(self, "Terminó con errores", f"{ok} de {total} correctos.\n\n{det}")
+            texto = f"{ok} de {total} correctos.\n\n{det}"
         else:
-            QMessageBox.information(self, "Listo", f"Se convirtieron {ok} de {total} archivo(s).")
+            icono = QMessageBox.Information
+            titulo = "Listo"
+            texto = f"Se convirtieron {ok} de {total} archivo(s)."
+
+        if salidas:
+            if len(salidas) == 1:
+                texto += f"\n\nGuardado en:\n{salidas[0]}"
+            else:
+                texto += f"\n\n{len(salidas)} archivos guardados en:\n{carpeta}"
+
+        box = QMessageBox(icono, titulo, texto, QMessageBox.Ok, self)
+        btn_abrir = None
+        if salidas:
+            btn_abrir = box.addButton("Abrir carpeta", QMessageBox.ActionRole)
+            box.setDefaultButton(btn_abrir)
+        box.exec()
+        if btn_abrir is not None and box.clickedButton() is btn_abrir:
+            self._abrir_carpeta_salida(salidas[0])
+
+    def _abrir_carpeta_salida(self, ruta):
+        """Abre el gestor de archivos en la carpeta del archivo generado."""
+        carpeta = ruta if os.path.isdir(ruta) else os.path.dirname(ruta)
+        if carpeta and os.path.isdir(carpeta):
+            QDesktopServices.openUrl(QUrl.fromLocalFile(carpeta))
 
     def hay_trabajo(self):
         return self.worker is not None and self.worker.isRunning()
