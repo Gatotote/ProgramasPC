@@ -21,6 +21,7 @@ from PySide6.QtWidgets import (
 )
 
 from ...vault import KIND_LABELS, ItemKind
+from .. import config
 from ..widgets import hline
 
 _PATH_ROLE = Qt.ItemDataRole.UserRole
@@ -147,25 +148,37 @@ class FilesView(QWidget):
             return
         self.info.setText(f"Copia exportada: {dest}")
 
+    def _shred_pref(self) -> bool:
+        if not config.get("shred_on_import", False):
+            return False
+        return QMessageBox.question(
+            self, "Borrado seguro",
+            "Los originales se sobrescribirán y borrarán tras importarlos. ¿Continuar?"
+        ) == QMessageBox.StandardButton.Yes
+
     def _import_files(self) -> None:
         files, _ = QFileDialog.getOpenFileNames(self, "Importar archivos")
         if not files:
             return
         dest = self._current_dir()
+        sd = self._shred_pref()
         n = 0
         for f in files:
-            n += self.session.import_path(Path(f), dest)
+            n += self.session.import_path(Path(f), dest, secure_delete=sd)
         self.refresh()
-        self.info.setText(f"Importados {n} archivo(s) en {dest}")
+        self.info.setText(f"Importados {n} archivo(s) en {dest}"
+                          + (" · originales borrados" if sd else ""))
 
     def _import_folder(self) -> None:
         d = QFileDialog.getExistingDirectory(self, "Importar carpeta")
         if not d:
             return
         dest = self._current_dir()
-        n = self.session.import_path(Path(d), dest)
+        sd = self._shred_pref()
+        n = self.session.import_path(Path(d), dest, secure_delete=sd)
         self.refresh()
-        self.info.setText(f"Importados {n} archivo(s) en {dest}")
+        self.info.setText(f"Importados {n} archivo(s) en {dest}"
+                          + (" · originales borrados" if sd else ""))
 
     def _delete(self) -> None:
         _it, vpath, _typ = self._sel()

@@ -175,12 +175,16 @@ def status(vault: Path) -> None:
 @click.argument("vault", type=click.Path(exists=True, path_type=Path))
 @click.argument("src", type=click.Path(exists=True, path_type=Path))
 @click.option("--dest", default="/", help="Carpeta destino dentro de la bóveda.")
+@click.option("--shred", is_flag=True,
+              help="Sobrescribir y borrar el original tras importarlo.")
 @_unlock_opts
-def add(vault: Path, src: Path, dest: str, recovery: bool, pin_only: bool) -> None:
+def add(vault: Path, src: Path, dest: str, shred: bool, recovery: bool, pin_only: bool) -> None:
     """Importa un archivo o una carpeta a la bóveda."""
+    if shred and not click.confirm(f"Se borrará de forma segura el original ({src}). ¿Seguir?"):
+        return
     with _open(vault, recovery=recovery, pin_only=pin_only) as session:
-        n = session.import_path(src, dest)
-    click.echo(f"Importados {n} archivo(s) en {dest}")
+        n = session.import_path(src, dest, secure_delete=shred)
+    click.echo(f"Importados {n} archivo(s) en {dest}" + (" · originales borrados" if shred else ""))
 
 
 @main.command(name="ls")
@@ -353,6 +357,25 @@ def item_list(vault, dir_path, kind, recovery, pin_only) -> None:
         click.echo(f"  [{r['kind']:<9}] {r['path']}{extra}")
     if not rows:
         click.echo("  (sin elementos)")
+
+
+@main.command("exclude-from-index")
+@click.argument("vault", type=click.Path(exists=True, path_type=Path))
+def exclude_from_index(vault: Path) -> None:
+    """Saca la bóveda del indexador de archivos de KDE (Baloo)."""
+    from .desktop_integration import exclude_from_baloo
+
+    click.echo(exclude_from_baloo(vault))
+
+
+@main.command("install-desktop")
+def install_desktop() -> None:
+    """Instala el lanzador «Bóveda Inteligente» en el menú de KDE."""
+    from .desktop_integration import install_desktop_entry
+
+    path = install_desktop_entry()
+    click.echo(f"Lanzador instalado: {path}")
+    click.echo("Busca «Bóveda Inteligente» en el menú de aplicaciones.")
 
 
 if __name__ == "__main__":

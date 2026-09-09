@@ -1,4 +1,4 @@
-# BóvedaFacial
+# BóvedaFacial · «Bóveda Inteligente»
 
 Bóveda de carpetas **cifrada** con desbloqueo por **reconocimiento facial**
 (InsightFace / ArcFace, pack `antelopev2`) **+ PIN**. El contenido queda
@@ -36,7 +36,18 @@ desbloqueo forzado.
 | 4b·1 | GUI: tema, asistente de primer arranque, ventana de desbloqueo | ✅ |
 | 4b·2 | GUI: ventana principal (barra lateral, tarjetas, actividad, editor, FAB) | ✅ |
 | 4b·3 | GUI: Archivos (abrir en RAM) + Fotografías (galería) + `Session.checkout` | ✅ |
-| 5 | Exclusión Baloo, `shred` del original al importar, empaquetado (.desktop) | ⏳ |
+| 5 | Exclusión Baloo, `shred` del original al importar, lanzador de escritorio | ✅ |
+
+### Integración con el escritorio (Fase 5) — `bovedafacial/desktop_integration.py`
+
+- `exclude_from_baloo(vault)`: usa `balooctl6 config add excludeFolders` si está,
+  si no edita `~/.config/baloofilerc`. El asistente lo hace al crear la bóveda;
+  también hay un botón en Configuración y `bovedafacial exclude-from-index`.
+- **`shred` del original al importar**: `import_path(..., secure_delete=True)`
+  sobrescribe y borra el origen (`crypto/shred.py`). CLI: `add --shred` (pide
+  confirmación). GUI: casilla en Configuración → pregunta antes de cada importación.
+- `install_desktop_entry()`: instala `bovedafacial.desktop` + icono SVG en
+  `~/.local/share`. CLI: `bovedafacial install-desktop`; botón en Configuración.
 
 ### GUI (`bovedafacial-gui`)
 

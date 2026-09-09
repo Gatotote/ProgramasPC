@@ -236,6 +236,11 @@ class SetupWizard(QDialog):
             except Exception as e:  # noqa: BLE001
                 QMessageBox.warning(self, "Rostro", f"La bóveda se creó pero no se pudo "
                                                     f"guardar el rostro: {e}")
+        try:
+            from ..desktop_integration import exclude_from_baloo
+            exclude_from_baloo(self.vault_path)
+        except Exception:  # noqa: BLE001
+            pass
         self._session.close()
         self.phrase_box.setPlainText(self._phrase)
         return True

@@ -97,8 +97,9 @@ class Session:
 
     # --- operaciones -----------------------------------------------------
     @_translate
-    def import_path(self, src: Path, dest_dir: str = "/") -> int:
-        """Importa un archivo o un árbol de carpetas. Devuelve nº de archivos."""
+    def import_path(self, src: Path, dest_dir: str = "/", *, secure_delete: bool = False) -> int:
+        """Importa un archivo o un árbol de carpetas. Devuelve nº de archivos.
+        `secure_delete=True` sobrescribe y borra el original tras importarlo."""
         src = Path(src)
         if not src.exists():
             raise VaultError(f"No existe el origen: {src}")
@@ -106,6 +107,8 @@ class Session:
         if src.is_file():
             self._import_file(src, dest_dir, src.name)
             count = 1
+            if secure_delete:
+                shred.shred_file(src)
         else:
             base = dest_dir.rstrip("/") + "/" + src.name
             tree.ensure_dir(self.index, base)
@@ -116,8 +119,11 @@ class Session:
                 for fname in sorted(files):
                     self._import_file(Path(root) / fname, vdir, fname)
                     count += 1
+            if secure_delete:
+                shred.shred_tree(src)
         self._dirty = True
-        self.log_event(audit.FILE_IMPORT, f"{src.name} -> {dest_dir}", count=count)
+        detail = f"{src.name} -> {dest_dir}" + (" (shred)" if secure_delete else "")
+        self.log_event(audit.FILE_IMPORT, detail, count=count)
         return count
 
     def _import_file(self, fpath: Path, vdir: str, name: str) -> None:

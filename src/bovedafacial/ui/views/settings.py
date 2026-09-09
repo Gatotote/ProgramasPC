@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from PySide6.QtCore import Signal
 from PySide6.QtWidgets import (
+    QCheckBox,
     QComboBox,
     QHBoxLayout,
     QLabel,
@@ -13,6 +14,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from ... import desktop_integration
 from .. import config
 from ..widgets import Card
 
@@ -95,7 +97,38 @@ class SettingsView(QWidget):
         self.backup_lbl.setProperty("role", "dim")
         card3.body.addWidget(self.backup_lbl)
         v.addWidget(card3)
+
+        card4 = Card("Sistema")
+        self.shred_chk = QCheckBox("Borrar los originales de forma segura al importar")
+        self.shred_chk.setChecked(bool(config.get("shred_on_import", False)))
+        self.shred_chk.toggled.connect(lambda on: config.set("shred_on_import", bool(on)))
+        card4.body.addWidget(self.shred_chk)
+
+        self.sys_lbl = QLabel("")
+        self.sys_lbl.setProperty("role", "dim")
+        self.sys_lbl.setWordWrap(True)
+        excl = QPushButton("Excluir la bóveda del buscador de KDE (Baloo)")
+        excl.clicked.connect(self._exclude_baloo)
+        card4.body.addWidget(excl)
+        launcher = QPushButton("Instalar el lanzador en el menú de KDE")
+        launcher.clicked.connect(self._install_launcher)
+        card4.body.addWidget(launcher)
+        card4.body.addWidget(self.sys_lbl)
+        v.addWidget(card4)
         v.addStretch(1)
+
+    def _exclude_baloo(self) -> None:
+        try:
+            self.sys_lbl.setText(desktop_integration.exclude_from_baloo(self.session.path))
+        except Exception as e:  # noqa: BLE001
+            self.sys_lbl.setText(f"No se pudo: {e}")
+
+    def _install_launcher(self) -> None:
+        try:
+            p = desktop_integration.install_desktop_entry()
+            self.sys_lbl.setText(f"Lanzador instalado: {p}")
+        except Exception as e:  # noqa: BLE001
+            self.sys_lbl.setText(f"No se pudo: {e}")
 
     def _save_lock(self) -> None:
         self.session.set_policy(auto_lock_seconds=self.lock_combo.currentData())
