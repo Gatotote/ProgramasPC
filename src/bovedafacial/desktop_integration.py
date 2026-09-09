@@ -100,13 +100,35 @@ def _gui_executable() -> str:
     return f'"{sys.executable}" -m bovedafacial.ui.app'
 
 
+def _icon_svg_path() -> Path:
+    return (Path.home() / ".local" / "share" / "icons" / "hicolor"
+            / "scalable" / "apps" / "bovedafacial.svg")
+
+
+def _write_icons() -> Path:
+    svg_dir = Path.home() / ".local" / "share" / "icons" / "hicolor" / "scalable" / "apps"
+    svg_dir.mkdir(parents=True, exist_ok=True)
+    svg = svg_dir / "bovedafacial.svg"
+    svg.write_text(ICON_SVG, "utf-8")
+    # PNG en varios tamaños (algunos contextos de KDE los prefieren)
+    rsvg = shutil.which("rsvg-convert")
+    if rsvg:
+        for size in (16, 22, 24, 32, 48, 64, 128, 256):
+            d = Path.home() / ".local" / "share" / "icons" / "hicolor" / f"{size}x{size}" / "apps"
+            d.mkdir(parents=True, exist_ok=True)
+            try:
+                subprocess.run([rsvg, "-w", str(size), "-h", str(size), str(svg),
+                                "-o", str(d / "bovedafacial.png")],
+                               check=True, capture_output=True, timeout=15)
+            except (subprocess.SubprocessError, OSError):
+                pass
+    return svg
+
+
 def install_desktop_entry() -> Path:
     apps = Path.home() / ".local" / "share" / "applications"
-    icons = Path.home() / ".local" / "share" / "icons" / "hicolor" / "scalable" / "apps"
     apps.mkdir(parents=True, exist_ok=True)
-    icons.mkdir(parents=True, exist_ok=True)
-
-    (icons / "bovedafacial.svg").write_text(ICON_SVG, "utf-8")
+    _write_icons()
 
     entry = (
         "[Desktop Entry]\n"
@@ -125,7 +147,46 @@ def install_desktop_entry() -> Path:
     dpath.write_text(entry, "utf-8")
     os.chmod(dpath, 0o755)
 
-    upd = shutil.which("update-desktop-database")
-    if upd:
-        subprocess.run([upd, str(apps)], capture_output=True, timeout=15)
+    _refresh_desktop_caches(apps)
     return dpath
+
+
+def _refresh_desktop_caches(apps: Path) -> None:
+    for tool, args in (
+        ("update-desktop-database", [str(apps)]),
+        ("kbuildsycoca6", ["--noincremental"]),
+        ("gtk-update-icon-cache", ["-f", "-t",
+                                   str(Path.home() / ".local" / "share" / "icons" / "hicolor")]),
+    ):
+        exe = shutil.which(tool)
+        if exe:
+            try:
+                subprocess.run([exe, *args], capture_output=True, timeout=30)
+            except (subprocess.SubprocessError, OSError):
+                pass
+    for cache in ("icon-cache.kcache", "plasma-svgelements"):
+        try:
+            (Path.home() / ".cache" / cache).unlink(missing_ok=True)
+        except OSError:
+            pass
+
+
+def place_on_desktop() -> Path | None:
+    """Copia el lanzador al Escritorio con `Icon=` en ruta absoluta (más fiable
+    para la vista de carpeta que el nombre de icono del tema)."""
+    src = install_desktop_entry()
+    try:
+        out = subprocess.run(["xdg-user-dir", "DESKTOP"], capture_output=True,
+                              text=True, timeout=5).stdout.strip()
+    except (subprocess.SubprocessError, OSError):
+        out = ""
+    desk = Path(out) if out else Path.home() / "Desktop"
+    if not desk.is_dir():
+        desk = Path.home() / "Escritorio"
+    if not desk.is_dir():
+        return None
+    text = src.read_text("utf-8").replace("Icon=bovedafacial", f"Icon={_icon_svg_path()}")
+    dst = desk / "bovedafacial.desktop"
+    dst.write_text(text, "utf-8")
+    os.chmod(dst, 0o755)
+    return dst

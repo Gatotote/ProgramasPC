@@ -22,6 +22,7 @@ from PySide6.QtWidgets import (
 
 from ...vault import KIND_LABELS, ItemKind
 from .. import config
+from ..busy import run_busy
 from ..widgets import hline
 
 _PATH_ROLE = Qt.ItemDataRole.UserRole
@@ -126,7 +127,8 @@ class FilesView(QWidget):
         if not vpath or typ == "dir":
             return
         try:
-            path = self.session.checkout(vpath)
+            path = run_busy(self, "Descifrando a la memoria…",
+                            lambda: self.session.checkout(vpath))
         except Exception as e:  # noqa: BLE001
             QMessageBox.warning(self, "Abrir", str(e))
             return
@@ -142,7 +144,8 @@ class FilesView(QWidget):
         if not dest:
             return
         try:
-            self.session.extract(vpath, Path(dest))
+            run_busy(self, "Exportando copia…",
+                     lambda: self.session.extract(vpath, Path(dest)))
         except Exception as e:  # noqa: BLE001
             QMessageBox.warning(self, "Exportar", str(e))
             return
@@ -162,9 +165,15 @@ class FilesView(QWidget):
             return
         dest = self._current_dir()
         sd = self._shred_pref()
-        n = 0
-        for f in files:
-            n += self.session.import_path(Path(f), dest, secure_delete=sd)
+
+        def work():
+            return sum(self.session.import_path(Path(f), dest, secure_delete=sd) for f in files)
+
+        try:
+            n = run_busy(self, f"Cifrando e importando {len(files)} archivo(s)…", work)
+        except Exception as e:  # noqa: BLE001
+            QMessageBox.warning(self, "Importar", str(e))
+            return
         self.refresh()
         self.info.setText(f"Importados {n} archivo(s) en {dest}"
                           + (" · originales borrados" if sd else ""))
@@ -175,7 +184,12 @@ class FilesView(QWidget):
             return
         dest = self._current_dir()
         sd = self._shred_pref()
-        n = self.session.import_path(Path(d), dest, secure_delete=sd)
+        try:
+            n = run_busy(self, "Cifrando e importando la carpeta…",
+                         lambda: self.session.import_path(Path(d), dest, secure_delete=sd))
+        except Exception as e:  # noqa: BLE001
+            QMessageBox.warning(self, "Importar", str(e))
+            return
         self.refresh()
         self.info.setText(f"Importados {n} archivo(s) en {dest}"
                           + (" · originales borrados" if sd else ""))
@@ -186,9 +200,14 @@ class FilesView(QWidget):
             return
         if QMessageBox.question(self, "Eliminar",
                                 f"¿Eliminar «{vpath}» de la bóveda?") \
-                == QMessageBox.StandardButton.Yes:
-            self.session.remove(vpath)
-            self.refresh()
+                != QMessageBox.StandardButton.Yes:
+            return
+        try:
+            run_busy(self, "Eliminando de la bóveda…", lambda: self.session.remove(vpath))
+        except Exception as e:  # noqa: BLE001
+            QMessageBox.warning(self, "Eliminar", str(e))
+            return
+        self.refresh()
 
 
 def _hsize(n: int) -> str:

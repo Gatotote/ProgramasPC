@@ -162,8 +162,11 @@ class PhotosView(QWidget):
             tile.set_image(img)
 
     def _open(self, vpath: str) -> None:
+        from ..busy import run_busy
+
         try:
-            path = self.session.checkout(vpath)
+            path = run_busy(self, "Descifrando la imagen…",
+                            lambda: self.session.checkout(vpath))
         except Exception:  # noqa: BLE001
             return
         QDesktopServices.openUrl(QUrl.fromLocalFile(str(path)))

@@ -369,13 +369,18 @@ def exclude_from_index(vault: Path) -> None:
 
 
 @main.command("install-desktop")
-def install_desktop() -> None:
-    """Instala el lanzador «Bóveda Inteligente» en el menú de KDE."""
-    from .desktop_integration import install_desktop_entry
+@click.option("--on-desktop", is_flag=True, help="Poner también un icono en el Escritorio.")
+def install_desktop(on_desktop: bool) -> None:
+    """Instala el lanzador «Bóveda Inteligente» (menú de KDE)."""
+    from .desktop_integration import install_desktop_entry, place_on_desktop
 
     path = install_desktop_entry()
-    click.echo(f"Lanzador instalado: {path}")
-    click.echo("Busca «Bóveda Inteligente» en el menú de aplicaciones.")
+    click.echo(f"Lanzador en el menú: {path}")
+    if on_desktop:
+        d = place_on_desktop()
+        click.echo(f"Icono en el escritorio: {d}" if d else "No se encontró la carpeta Escritorio.")
+    click.echo("Si no aparece el icono nuevo: cierra sesión y vuelve a entrar, "
+               "o reinicia Plasma (kquitapp6 plasmashell; kstart plasmashell).")
 
 
 if __name__ == "__main__":

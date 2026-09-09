@@ -170,7 +170,8 @@ class ItemsView(QWidget):
         if QMessageBox.question(self, "Eliminar",
                                 f"¿Eliminar «{path.rsplit('/', 1)[-1]}» de la bóveda?") \
                 == QMessageBox.StandardButton.Yes:
-            self.session.remove(path)
+            from ..busy import run_busy
+            run_busy(self, "Eliminando de la bóveda…", lambda: self.session.remove(path))
             self.refresh()
 
     def _menu(self, pos) -> None:
