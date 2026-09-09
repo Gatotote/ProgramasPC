@@ -30,10 +30,27 @@ desbloqueo forzado.
 | Fase | Contenido | Estado |
 |------|-----------|--------|
 | 1 | Núcleo cripto + contenedor + CLI de pruebas + tests | ✅ |
-| 2 | Motor facial (antelopev2): cámara, embeddings, enrolado, liveness | ⏳ |
+| 2 | Motor facial (antelopev2): cámara, embeddings, enrolado, liveness | ✅ |
 | 3 | Integración de desbloqueo: PIN → MK → gate facial, rate-limiting | ⏳ |
 | 4 | GUI PySide6: asistente, ventana principal, vista de desbloqueo | ⏳ |
 | 5 | Auto-bloqueo, exclusión Baloo, `shred` del original, empaquetado | ⏳ |
+
+### Motor facial (Fase 2)
+
+```bash
+uv sync --extra face          # instala insightface + onnxruntime-gpu + wheels CUDA 13
+uv run --extra face python scripts/face_smoke.py           # prueba con la webcam
+uv run --extra face python scripts/face_smoke.py --enroll  # enrola y se verifica
+```
+
+- Pack `antelopev2` (SCRFD-10G + ResNet100 glint360k); se descarga solo a
+  `~/.insightface/` en el primer uso (~260 MB). El motor corrige el zip anidado.
+- GPU: `onnxruntime-gpu[cuda,cudnn]` trae los wheels `nvidia-*-cu13`, así que la
+  RTX 3060 acelera sin instalar el toolkit CUDA en el sistema (~2 GB en `.venv`).
+  Medido: `primary_face` ~40-100 ms en GPU vs ~2.3 s en CPU. Si faltan las libs
+  CUDA, cae a CPU con aviso.
+- `insightface` arrastra `onnxruntime` (CPU) que choca con `onnxruntime-gpu`;
+  se anula en `[tool.uv] override-dependencies`.
 
 ## Uso (CLI de pruebas — Fase 1)
 
@@ -67,6 +84,14 @@ src/bovedafacial/
   vault/
     tree.py         árbol lógico de carpetas/archivos
     session.py      sesión abierta: importar / extraer / listar / eliminar
-  face/             Fase 2  (uv sync --extra face)
+  face/
+    camera.py       fuente de vídeo (v4l2 / imagen)
+    engine.py       InsightFace antelopev2 + embeddings 512-d (carga perezosa)
+    quality.py      control de calidad del frame + EAR (parpadeo)
+    liveness.py     retos de prueba de vida (girar / parpadear / acercarse)
+    enroll.py       Template + enrolado (batch e incremental)
+    verify.py       similitud coseno + umbral + backoff exponencial
+    store.py        guardado cifrado de la plantilla en faces.enc
   ui/               Fase 4  (uv sync --extra gui)
+scripts/face_smoke.py   prueba manual del motor con la webcam
 ```

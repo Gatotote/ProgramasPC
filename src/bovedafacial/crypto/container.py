@@ -33,6 +33,7 @@ from .subkeys import INFO_DATA, INFO_INDEX, INFO_NAMES, subkey
 CONTAINER_VERSION = 1
 HEADER_NAME = "header.json"
 INDEX_NAME = "index.enc"
+FACES_NAME = "faces.enc"
 OBJECTS_DIR = "objects"
 NOINDEX_SENTINELS = (".noindex", ".trackerignore", ".metadata_never_index")
 
@@ -110,6 +111,25 @@ def decrypt_index(vault_dir: Path, mk: bytes) -> dict:
     except Exception as e:
         raise ContainerError("El índice está corrupto o la clave no corresponde.") from e
     return json.loads(plain)
+
+
+# --- ficheros secretos genéricos (p. ej. faces.enc) -----------------------
+
+def write_secret(vault_dir: Path, name: str, key: bytes, aad: bytes, data: bytes) -> None:
+    nonce = os.urandom(NONCE_LEN)
+    _atomic_write(vault_dir / name, nonce + AESGCM(key).encrypt(nonce, data, aad))
+
+
+def read_secret(vault_dir: Path, name: str, key: bytes, aad: bytes) -> bytes | None:
+    path = vault_dir / name
+    if not path.exists():
+        return None
+    raw = path.read_bytes()
+    nonce, blob = raw[:NONCE_LEN], raw[NONCE_LEN:]
+    try:
+        return AESGCM(key).decrypt(nonce, blob, aad)
+    except Exception as e:
+        raise ContainerError(f"{name} está corrupto o la clave no corresponde.") from e
 
 
 # --- objetos (datos troceados) -----------------------------------------------

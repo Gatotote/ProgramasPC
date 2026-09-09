@@ -13,9 +13,11 @@ dependencies = [
 
 [project.optional-dependencies]
 # Fase 2: motor facial. Se instala con  uv sync --extra face
+# onnxruntime-gpu[cuda,cudnn] trae los wheels nvidia-*-cu13 (CUDA 13 + cuDNN 9),
+# así que la GPU funciona sin instalar el toolkit CUDA en el sistema.
 face = [
     "insightface>=0.7.3",
-    "onnxruntime-gpu>=1.19",
+    "onnxruntime-gpu[cuda,cudnn]>=1.29",
     "opencv-python>=4.10",
     "numpy>=1.26",
 ]
@@ -39,3 +41,9 @@ packages = ["src/bovedafacial"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+
+[tool.uv]
+# insightface arrastra `onnxruntime` (CPU) y choca con `onnxruntime-gpu` (mismo
+# directorio de instalación). Anulamos la CPU: onnxruntime-gpu ya cubre el
+# import `onnxruntime`.
+override-dependencies = ["onnxruntime; sys_platform == 'nunca'"]
