@@ -17,14 +17,20 @@ import sys
 from pathlib import Path
 
 ICON_SVG = """<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
-  <rect x="6" y="6" width="116" height="116" rx="24" fill="#1b1e23"/>
-  <rect x="6" y="6" width="116" height="116" rx="24" fill="none" stroke="#2d323b" stroke-width="2"/>
-  <circle cx="64" cy="60" r="34" fill="none" stroke="#c6903f" stroke-width="7"/>
-  <circle cx="64" cy="60" r="9" fill="#c6903f"/>
-  <rect x="60" y="60" width="8" height="24" rx="4" fill="#c6903f"/>
-  <path d="M64 20a40 40 0 0 1 40 40" fill="none" stroke="#c6903f" stroke-width="7"
-        stroke-linecap="round" opacity="0.5"/>
-  <rect x="30" y="98" width="68" height="12" rx="6" fill="#c6903f"/>
+  <rect x="0" y="0" width="128" height="128" rx="26" fill="#ffffff"/>
+  <circle cx="64" cy="64" r="55" fill="none" stroke="#0a0a0a" stroke-width="4"/>
+  <g fill="none" stroke="#0a0a0a" stroke-width="4" stroke-linejoin="round" stroke-linecap="round">
+    <path d="M64 10 L118 64 L64 118 L10 64 Z"/>
+    <path d="M29 45 H99"/>
+    <path d="M29 83 H99"/>
+  </g>
+  <g>
+    <path d="M54 63 v-7 a10 10 0 0 1 20 0 v7" fill="none" stroke="#8b5cf6"
+          stroke-width="6" stroke-linecap="round"/>
+    <rect x="49" y="61" width="30" height="29" rx="6" fill="#8b5cf6"/>
+    <circle cx="64" cy="73" r="3.4" fill="#ffffff"/>
+    <rect x="62.4" y="73" width="3.2" height="9" rx="1.6" fill="#ffffff"/>
+  </g>
 </svg>
 """
 
