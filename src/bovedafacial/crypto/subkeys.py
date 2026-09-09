@@ -13,6 +13,7 @@ INFO_INDEX = b"bovedafacial:index:v1"        # cifra index.enc
 INFO_DATA = b"bovedafacial:object-data:v1"   # cifra los chunks
 INFO_NAMES = b"bovedafacial:object-names:v1"  # HMAC para los nombres de chunk
 INFO_TEMPLATES = b"bovedafacial:face-templates:v1"  # Fase 2: cifra los embeddings
+INFO_AUDIT = b"bovedafacial:audit-log:v1"    # Fase 4: cifra el registro de actividad
 
 
 def subkey(mk: bytes, info: bytes, length: int = 32) -> bytes:

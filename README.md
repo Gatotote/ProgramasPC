@@ -32,8 +32,32 @@ desbloqueo forzado.
 | 1 | Núcleo cripto + contenedor + CLI de pruebas + tests | ✅ |
 | 2 | Motor facial (antelopev2): cámara, embeddings, enrolado, liveness | ✅ |
 | 3 | Desbloqueo completo: `open_vault` (PIN → MK → gate facial), backoff | ✅ |
-| 4 | GUI PySide6: asistente, ventana principal, vista de desbloqueo | ⏳ |
+| 4a | Modelo de datos: elementos tipados + registro de actividad + generador | ✅ |
+| 4b | GUI PySide6: asistente, ventana principal, vista de desbloqueo | ⏳ |
 | 5 | Auto-bloqueo, exclusión Baloo, `shred` del original, empaquetado | ⏳ |
+
+### Elementos tipados y actividad (Fase 4a)
+
+Además de archivos, la bóveda guarda **elementos** (`vault/items.py`):
+`password · card · account · contact · will · insurance · note`. Cada uno es una
+entrada del índice con `fields` (dict pequeño, cifrado dentro de `index.enc`) y
+`attachments` opcionales (archivos troceados). Los campos `secret` los enmascara
+la UI.
+
+- `Session.add_item / get_item / update_item / list_items / attach_file`
+- `vault/audit.py`: registro cifrado (`audit.enc`) → `session.activity()`,
+  `activity_summary()` (para el panel: último acceso, añadidos hoy, intentos
+  bloqueados 24 h, uso de disco). Los intentos fallidos de PIN viven en
+  `header["stats"]["fail_times"]` (en claro, no hay MK aún).
+- `bovedafacial/pwgen.py`: generador de contraseñas (`secrets`).
+
+```bash
+uv run bovedafacial gen -n 24
+uv run bovedafacial item add  V.vault password "Banco" --dir /Finanzas -f usuario=x -f password=y
+uv run bovedafacial item list V.vault
+uv run bovedafacial item show V.vault /Finanzas/Banco [--reveal]
+uv run bovedafacial activity  V.vault
+```
 
 ### Desbloqueo (Fase 3)
 
@@ -106,9 +130,13 @@ src/bovedafacial/
     keyslots.py     Argon2id + BIP39, envolver/desenvolver MK
     subkeys.py      subclaves HKDF por dominio
     container.py    header.json, index.enc, objects/ (chunks cifrados)
+  throttle.py       BackoffPolicy (bloqueo por intentos, sin numpy)
+  pwgen.py          generador de contraseñas
   vault/
-    tree.py         árbol lógico de carpetas/archivos
-    session.py      sesión abierta: importar / extraer / listar / eliminar
+    tree.py         árbol lógico: carpetas / archivos / elementos tipados
+    items.py        tipos de elemento + campos (password, card, account, …)
+    audit.py        registro de actividad cifrado (audit.enc)
+    session.py      sesión abierta + open_vault() (PIN → MK → gate facial)
   face/
     camera.py       fuente de vídeo (v4l2 / imagen)
     engine.py       InsightFace antelopev2 + embeddings 512-d (carga perezosa)

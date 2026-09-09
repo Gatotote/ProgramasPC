@@ -230,5 +230,130 @@ def rm(vault: Path, vpath: str, recovery: bool, pin_only: bool) -> None:
     click.echo(f"Eliminado: {vpath}")
 
 
+@main.command()
+@click.option("-n", "--length", default=20, show_default=True)
+@click.option("--no-upper", is_flag=True)
+@click.option("--no-lower", is_flag=True)
+@click.option("--no-digits", is_flag=True)
+@click.option("--no-symbols", is_flag=True)
+@click.option("--ambiguous", is_flag=True, help="Permitir l/1/O/0…")
+def gen(length, no_upper, no_lower, no_digits, no_symbols, ambiguous) -> None:
+    """Genera una contraseña (no necesita bóveda)."""
+    from .pwgen import generate, strength
+
+    try:
+        pw = generate(length, upper=not no_upper, lower=not no_lower, digits=not no_digits,
+                      symbols=not no_symbols, avoid_ambiguous=not ambiguous)
+    except ValueError as e:
+        raise click.ClickException(str(e)) from e
+    click.echo(pw)
+    click.secho(f"  fortaleza: {strength(pw)}", fg="green")
+
+
+@main.command()
+@click.argument("vault", type=click.Path(exists=True, path_type=Path))
+@click.option("--limit", default=20, show_default=True)
+@_unlock_opts
+def activity(vault: Path, limit: int, recovery: bool, pin_only: bool) -> None:
+    """Muestra el resumen de actividad y los últimos eventos."""
+    import datetime as _dt
+
+    with _open(vault, recovery=recovery, pin_only=pin_only) as session:
+        s = session.activity_summary()
+        events = session.activity(limit)
+        stor = session.storage_stats()
+    click.echo(f"  último desbloqueo    {_fmt_ts(s['last_unlock'])}")
+    click.echo(f"  archivos hoy         {s['files_added_today']}")
+    click.echo(f"  elementos hoy        {s['items_added_today']}")
+    click.echo(f"  intentos bloqueados  {s['blocked_attempts_24h']} (24 h) · {s['failed_total']} histórico")
+    click.echo(f"  en disco             {stor['on_disk_bytes'] / 1e6:.1f} MB "
+               f"({stor['files']} archivos · {stor['items']} elementos)")
+    click.echo("  ── eventos ──")
+    for e in events:
+        when = _dt.datetime.fromtimestamp(e["ts"]).strftime("%d %b %H:%M")
+        click.echo(f"  {when}  {e['kind']:<12} {e.get('detail', '')}")
+
+
+def _fmt_ts(ts):
+    if not ts:
+        return "—"
+    import datetime as _dt
+    return _dt.datetime.fromtimestamp(ts).strftime("%d %b %Y %H:%M")
+
+
+@main.group()
+def item() -> None:
+    """Elementos tipados: contraseñas, tarjetas, cuentas, contactos…"""
+
+
+@item.command("add")
+@click.argument("vault", type=click.Path(exists=True, path_type=Path))
+@click.argument("kind")
+@click.argument("name")
+@click.option("--dir", "dir_path", default="/", help="Carpeta dentro de la bóveda.")
+@click.option("-f", "--field", "fields", multiple=True, metavar="CLAVE=VALOR",
+              help="Repite para varios campos. Ej.: -f usuario=ana -f password=…")
+@_unlock_opts
+def item_add(vault, kind, name, dir_path, fields, recovery, pin_only) -> None:
+    """Crea un elemento. KIND: password|card|account|contact|will|insurance|note"""
+    data = {}
+    for pair in fields:
+        if "=" not in pair:
+            raise click.ClickException(f"Campo mal formado: {pair!r} (usa CLAVE=VALOR)")
+        k, v = pair.split("=", 1)
+        data[k.strip()] = v
+    with _open(vault, recovery=recovery, pin_only=pin_only) as session:
+        try:
+            session.add_item(dir_path, kind, name, data)
+        except (ValueError, VaultError) as e:
+            raise click.ClickException(str(e)) from e
+    click.echo(f"Elemento «{name}» ({kind}) creado en {dir_path}")
+
+
+@item.command("show")
+@click.argument("vault", type=click.Path(exists=True, path_type=Path))
+@click.argument("vpath")
+@click.option("--reveal", is_flag=True, help="Mostrar los campos secretos en claro.")
+@_unlock_opts
+def item_show(vault, vpath, reveal, recovery, pin_only) -> None:
+    """Muestra un elemento."""
+    from .vault import spec_for
+
+    with _open(vault, recovery=recovery, pin_only=pin_only) as session:
+        try:
+            it = session.get_item(vpath)
+        except VaultError as e:
+            raise click.ClickException(str(e)) from e
+    click.echo(f"  tipo: {it['kind']}")
+    secret = {f.key for f in spec_for(it["kind"]) if f.secret}
+    for f in spec_for(it["kind"]):
+        val = it["fields"].get(f.key)
+        if val is None:
+            continue
+        shown = val if (reveal or f.key not in secret) else "•" * min(len(val), 12)
+        click.echo(f"  {f.label:<22} {shown}")
+    for a in it["attachments"]:
+        click.echo(f"  adjunto: {a.get('name')}  ({a.get('size')} B)")
+
+
+@item.command("list")
+@click.argument("vault", type=click.Path(exists=True, path_type=Path))
+@click.option("--dir", "dir_path", default="/")
+@click.option("--kind", default=None)
+@_unlock_opts
+def item_list(vault, dir_path, kind, recovery, pin_only) -> None:
+    """Lista los elementos tipados."""
+    with _open(vault, recovery=recovery, pin_only=pin_only) as session:
+        try:
+            rows = session.list_items(dir_path, kind)
+        except (ValueError, VaultError) as e:
+            raise click.ClickException(str(e)) from e
+    for r in rows:
+        extra = f"  +{r['attachments']} adj." if r["attachments"] else ""
+        click.echo(f"  [{r['kind']:<9}] {r['path']}{extra}")
+    if not rows:
+        click.echo("  (sin elementos)")
+
+
 if __name__ == "__main__":
     main()

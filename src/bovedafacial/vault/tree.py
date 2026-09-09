@@ -65,9 +65,23 @@ def add_file(root: dict, dir_path: str, name: str, descriptor: dict, mtime: floa
     parent["entries"][name] = entry
 
 
+def add_item(root: dict, dir_path: str, name: str, kind: str, fields: dict, now: float) -> dict:
+    parent = ensure_dir(root, dir_path)
+    entry = {
+        "type": "item",
+        "kind": str(kind),
+        "fields": dict(fields),
+        "attachments": [],
+        "created": now,
+        "modified": now,
+    }
+    parent["entries"][name] = entry
+    return entry
+
+
 def remove(root: dict, path: str) -> list[dict]:
-    """Quita una entrada. Devuelve los descriptores de archivo eliminados
-    (para poder borrar sus objetos del disco)."""
+    """Quita una entrada. Devuelve los descriptores de objeto eliminados
+    (archivos y adjuntos) para poder borrarlos del disco."""
     parts = split_path(path)
     if not parts:
         raise TreeError("No se puede eliminar la raíz")
@@ -79,20 +93,39 @@ def remove(root: dict, path: str) -> list[dict]:
 
 
 def iter_files(node: dict) -> Iterator[dict]:
-    if node["type"] == "file":
+    """Descriptores de objeto bajo `node` (archivos sueltos + adjuntos de items)."""
+    t = node.get("type")
+    if t == "file":
         yield node
-    else:
+    elif t == "item":
+        yield from node.get("attachments", [])
+    elif t == "dir":
         for child in node["entries"].values():
             yield from iter_files(child)
 
 
+def iter_items(node: dict, prefix: str = "") -> Iterator[tuple[str, dict]]:
+    """(ruta, nodo) de todos los elementos tipados bajo `node`."""
+    t = node.get("type")
+    if t == "item":
+        yield prefix or "/", node
+    elif t == "dir":
+        for name, child in node["entries"].items():
+            yield from iter_items(child, f"{prefix}/{name}")
+
+
 def listing(node: dict) -> list[dict]:
-    if node["type"] != "dir":
+    if node.get("type") != "dir":
         raise TreeError("No es una carpeta")
     out = []
     for name, child in sorted(node["entries"].items()):
-        if child["type"] == "dir":
+        ct = child["type"]
+        if ct == "dir":
             out.append({"name": name, "type": "dir", "size": None})
+        elif ct == "item":
+            att = sum(a.get("size", 0) for a in child.get("attachments", []))
+            out.append({"name": name, "type": "item", "kind": child.get("kind"),
+                        "size": att or None})
         else:
             out.append({"name": name, "type": "file", "size": child["size"]})
     return out

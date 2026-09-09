@@ -34,6 +34,7 @@ CONTAINER_VERSION = 1
 HEADER_NAME = "header.json"
 INDEX_NAME = "index.enc"
 FACES_NAME = "faces.enc"
+AUDIT_NAME = "audit.enc"
 OBJECTS_DIR = "objects"
 NOINDEX_SENTINELS = (".noindex", ".trackerignore", ".metadata_never_index")
 

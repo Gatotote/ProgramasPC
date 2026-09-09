@@ -27,7 +27,8 @@ from ..crypto.keyslots import (
     wrap_recovery_slot,
 )
 from ..throttle import BackoffPolicy
-from . import tree
+from . import audit, tree
+from . import items as I
 
 VAULT_SUFFIX = ".vault"
 MIN_PIN_LEN = 6
@@ -112,6 +113,7 @@ class Session:
                     self._import_file(Path(root) / fname, vdir, fname)
                     count += 1
         self._dirty = True
+        self.log_event(audit.FILE_IMPORT, f"{src.name} -> {dest_dir}", count=count)
         return count
 
     def _import_file(self, fpath: Path, vdir: str, name: str) -> None:
@@ -152,6 +154,120 @@ class Session:
         for descriptor in tree.remove(self.index, vpath):
             C.delete_object(self.path, self.mk, descriptor)
         self._dirty = True
+        self.log_event(audit.ITEM_REMOVE, vpath)
+
+    # --- elementos tipados (contraseñas, tarjetas, cuentas, ...) ----------
+    @_translate
+    def add_item(self, dir_path: str, kind, name: str, fields: dict) -> None:
+        k = I.coerce_kind(kind)
+        tree.add_item(self.index, dir_path, name, k.value,
+                      I.clean_fields(k, fields), time.time())
+        self._dirty = True
+        self.log_event(audit.ITEM_ADD, f"{k.value}:{name}")
+
+    @_translate
+    def get_item(self, vpath: str) -> dict:
+        node = tree.get_node(self.index, vpath)
+        if node.get("type") != "item":
+            raise VaultError(f"/{vpath.strip('/')} no es un elemento.")
+        return {
+            "kind": node["kind"],
+            "fields": dict(node.get("fields", {})),
+            "attachments": [dict(a) for a in node.get("attachments", [])],
+            "created": node.get("created"),
+            "modified": node.get("modified"),
+        }
+
+    @_translate
+    def update_item(self, vpath: str, fields: dict, *, replace: bool = False) -> None:
+        node = tree.get_node(self.index, vpath)
+        if node.get("type") != "item":
+            raise VaultError(f"/{vpath.strip('/')} no es un elemento.")
+        clean = I.clean_fields(node["kind"], fields)
+        node["fields"] = clean if replace else {**node.get("fields", {}), **clean}
+        node["modified"] = time.time()
+        self._dirty = True
+        self.log_event(audit.ITEM_UPDATE, vpath)
+
+    @_translate
+    def list_items(self, dir_path: str = "/", kind=None) -> list[dict]:
+        want = I.coerce_kind(kind).value if kind is not None else None
+        start = tree.get_node(self.index, dir_path)
+        out = []
+        for path, node in tree.iter_items(start, dir_path.rstrip("/")):
+            if want is None or node.get("kind") == want:
+                out.append({
+                    "path": path,
+                    "name": path.rsplit("/", 1)[-1],
+                    "kind": node.get("kind"),
+                    "modified": node.get("modified"),
+                    "attachments": len(node.get("attachments", [])),
+                })
+        return sorted(out, key=lambda r: r["path"])
+
+    @_translate
+    def attach_file(self, vpath: str, src: Path) -> None:
+        node = tree.get_node(self.index, vpath)
+        if node.get("type") != "item":
+            raise VaultError(f"/{vpath.strip('/')} no es un elemento.")
+        src = Path(src)
+        data = src.read_bytes()
+        descriptor = C.write_object(self.path, self.mk, C.new_object_id(), data, self.chunk_size)
+        descriptor["name"] = src.name
+        node.setdefault("attachments", []).append(descriptor)
+        node["modified"] = time.time()
+        self._dirty = True
+        self.log_event(audit.FILE_IMPORT, f"adjunto:{src.name}")
+
+    # --- registro de actividad -----------------------------------------
+    def log_event(self, kind: str, detail: str = "", count: int = 1) -> None:
+        if self._closed:
+            return
+        try:
+            audit.record(self, kind, detail, count=count)
+        except Exception:  # noqa: BLE001 - el log nunca debe tumbar una operación
+            pass
+
+    def activity(self, limit: int = 50, kind: str | None = None) -> list[dict]:
+        return audit.recent(self, limit, kind)
+
+    def activity_summary(self) -> dict:
+        return audit.summary(self)
+
+    # --- uso de espacio ---------------------------------------------
+    def storage_stats(self) -> dict:
+        files = items = attachments = 0
+        file_bytes = attach_bytes = 0
+        by_top: dict[str, int] = {}
+
+        def walk(node, top):
+            nonlocal files, items, attachments, file_bytes, attach_bytes
+            t = node.get("type")
+            if t == "file":
+                files += 1
+                file_bytes += node.get("size", 0)
+                by_top[top] = by_top.get(top, 0) + node.get("size", 0)
+            elif t == "item":
+                items += 1
+                for a in node.get("attachments", []):
+                    attachments += 1
+                    attach_bytes += a.get("size", 0)
+                    by_top[top] = by_top.get(top, 0) + a.get("size", 0)
+            elif t == "dir":
+                for name, child in node["entries"].items():
+                    walk(child, name if top is None else top)
+
+        walk(self.index, None)
+        objects_dir = self.path / C.OBJECTS_DIR
+        on_disk = sum(p.stat().st_size for p in objects_dir.rglob("*") if p.is_file())
+        return {
+            "files": files,
+            "items": items,
+            "attachments": attachments,
+            "plaintext_bytes": file_bytes + attach_bytes,
+            "on_disk_bytes": on_disk,
+            "by_category": by_top,
+        }
 
     def save(self) -> None:
         if self._dirty and not self._closed:
@@ -237,6 +353,9 @@ def _persist_failure(path: Path, header: dict, backoff: BackoffPolicy, now: floa
     header["backoff"] = backoff.to_dict()
     stats = header.setdefault("stats", {})
     stats["failed_total"] = int(stats.get("failed_total", 0)) + 1
+    times = stats.setdefault("fail_times", [])
+    times.append(time.time() if now is None else now)
+    stats["fail_times"] = times[-30:]
     C.save_header(path, header)
 
 
@@ -281,6 +400,7 @@ def open_vault(
             raise VaultError(str(e)) from e
         session = _open(path, mk, header)
         _persist_success(path, header, backoff=None)
+        session.log_event(audit.UNLOCK_OK, "recuperación")
         return session
 
     if pin is None:
@@ -328,6 +448,7 @@ def open_vault(
                                float(getattr(result, "score", 0.0)))
 
     _persist_success(path, header, backoff)
+    session.log_event(audit.UNLOCK_OK, "PIN + rostro" if require_face and C.secret_exists(path, C.FACES_NAME) else "PIN")
     return session
 
 
