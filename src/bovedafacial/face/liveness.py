@@ -37,11 +37,11 @@ DEFAULT_SEQUENCE_POOL = [
     Challenge.COME_CLOSER,
 ]
 
-YAW_TURN_DEG = 18.0        # giro mínimo para dar por válido TURN_*
+YAW_TURN_DEG = 14.0        # giro mínimo para dar por válido TURN_*
 YAW_CENTER_DEG = 10.0      # |yaw| por debajo de esto = "de frente"
 BLINK_EAR_CLOSED = 0.19    # EAR por debajo = ojo cerrado
 BLINK_EAR_OPEN = 0.26      # ...y hay que volver por encima para contar el parpadeo
-CLOSER_RATIO = 1.18        # el rostro debe crecer este factor respecto al inicio
+CLOSER_RATIO = 1.12        # el rostro debe crecer este factor respecto al inicio
 
 
 @dataclass

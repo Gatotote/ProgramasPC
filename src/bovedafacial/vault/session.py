@@ -1,13 +1,16 @@
 """Sesión de bóveda abierta: mantiene la MK y el índice en memoria y ofrece las
 operaciones de alto nivel (importar, extraer, listar, eliminar).
 
-Fase 1: sin rostro y sin borrado seguro del original. El desbloqueo real
-(PIN -> MK -> gate facial) se monta en la Fase 3 encima de esto.
+`open_vault()` es el desbloqueo completo de la Fase 3: comprueba el bloqueo por
+intentos fallidos, desenvuelve la MK con el PIN y, si hay plantilla facial y la
+política lo exige, delega la verificación del rostro en un `face_gate` que
+inyecta la capa de arriba (así `vault/` no depende de `face/`).
 """
 
 from __future__ import annotations
 
 import os
+import time
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -15,6 +18,7 @@ from ..crypto import container as C
 from ..crypto.keyslots import (
     DEFAULT_KDF,
     KeySlot,
+    WrongSecret,
     generate_recovery_phrase,
     new_master_key,
     unwrap_pin_slot,
@@ -22,6 +26,7 @@ from ..crypto.keyslots import (
     wrap_pin_slot,
     wrap_recovery_slot,
 )
+from ..throttle import BackoffPolicy
 from . import tree
 
 VAULT_SUFFIX = ".vault"
@@ -30,6 +35,25 @@ MIN_PIN_LEN = 6
 
 class VaultError(Exception):
     pass
+
+
+class VaultLocked(VaultError):
+    """Demasiados intentos fallidos: hay que esperar."""
+
+    def __init__(self, retry_after: float) -> None:
+        self.retry_after = retry_after
+        super().__init__(
+            f"Bóveda bloqueada por intentos fallidos. Reintenta en {retry_after:.0f} s."
+        )
+
+
+class FaceRejected(VaultError):
+    """PIN correcto pero el rostro no pasó la verificación / la prueba de vida."""
+
+    def __init__(self, reason: str, score: float = 0.0) -> None:
+        self.reason = reason
+        self.score = score
+        super().__init__(f"Rostro no verificado ({reason}).")
 
 
 def _translate(fn):
@@ -178,19 +202,23 @@ def create_vault(path: os.PathLike | str, pin: str, *, kdf: dict | None = None) 
     return phrase, session
 
 
-def _open(path: Path, mk: bytes) -> Session:
-    header = C.read_header(path)
+def _open(path: Path, mk: bytes, header: dict | None = None) -> Session:
+    path = Path(path)
+    header = header if header is not None else C.read_header(path)
     index = C.decrypt_index(path, mk)
     return Session(path=path, _mk=bytearray(mk), header=header, index=index)
 
 
 @_translate
 def unlock_with_pin(path: os.PathLike | str, pin: str) -> Session:
+    """Desbloqueo de bajo nivel: solo PIN -> MK -> sesión. Sin backoff ni rostro.
+    Lo usa el modo de recuperación interna y el enrolado. Para el desbloqueo
+    normal usa `open_vault()`."""
     path = Path(path)
     header = C.read_header(path)
     slot = KeySlot.from_json(header["keyslots"]["pin"])
     mk = unwrap_pin_slot(pin, slot, header["kdf"])   # lanza WrongSecret si falla
-    return _open(path, mk)
+    return _open(path, mk, header)
 
 
 @_translate
@@ -199,4 +227,125 @@ def unlock_with_recovery(path: os.PathLike | str, phrase: str) -> Session:
     header = C.read_header(path)
     slot = KeySlot.from_json(header["keyslots"]["recovery"])
     mk = unwrap_recovery_slot(phrase, slot)          # lanza WrongSecret si falla
-    return _open(path, mk)
+    return _open(path, mk, header)
+
+
+# --- desbloqueo completo (Fase 3) ---------------------------------------------
+
+def _persist_failure(path: Path, header: dict, backoff: BackoffPolicy, now: float | None) -> None:
+    backoff.register_failure(now=now)
+    header["backoff"] = backoff.to_dict()
+    stats = header.setdefault("stats", {})
+    stats["failed_total"] = int(stats.get("failed_total", 0)) + 1
+    C.save_header(path, header)
+
+
+def _persist_success(path: Path, header: dict, backoff: BackoffPolicy | None) -> None:
+    if backoff is not None:
+        backoff.register_success()
+        header["backoff"] = backoff.to_dict()
+    header.setdefault("stats", {})["last_unlock"] = time.time()
+    C.save_header(path, header)
+
+
+def open_vault(
+    path: os.PathLike | str,
+    *,
+    pin: str | None = None,
+    phrase: str | None = None,
+    face_gate=None,
+    now: float | None = None,
+) -> Session:
+    """Desbloqueo normal de la bóveda.
+
+    - `phrase`: modo recuperación — salta el bloqueo por intentos y el rostro.
+    - `pin`: comprueba el bloqueo por intentos -> desenvuelve la MK -> si hay
+      plantilla facial y la política lo exige, ejecuta `face_gate(session)`.
+
+    `face_gate` es un callable que recibe la sesión ya abierta y devuelve un
+    objeto con atributos `ok` (bool), `reason` (str) y `score` (float). Lo
+    provee quien pueda importar `bovedafacial.face` (la CLI o la GUI).
+    """
+    path = Path(path)
+    try:
+        header = C.read_header(path)
+    except C.ContainerError as e:
+        raise VaultError(str(e)) from e
+
+    # --- modo recuperación --------------------------------------------------
+    if phrase is not None:
+        try:
+            slot = KeySlot.from_json(header["keyslots"]["recovery"])
+            mk = unwrap_recovery_slot(phrase, slot)
+        except C.ContainerError as e:
+            raise VaultError(str(e)) from e
+        session = _open(path, mk, header)
+        _persist_success(path, header, backoff=None)
+        return session
+
+    if pin is None:
+        raise VaultError("Hace falta el PIN o la frase de recuperación.")
+
+    # --- bloqueo por intentos fallidos -----------------------------------
+    backoff = BackoffPolicy().load_state(header.get("backoff"))
+    remaining = backoff.remaining(now=now)
+    if remaining > 0:
+        raise VaultLocked(remaining)
+
+    # --- PIN -> MK ------------------------------------------------------
+    try:
+        slot = KeySlot.from_json(header["keyslots"]["pin"])
+        mk = unwrap_pin_slot(pin, slot, header["kdf"])
+    except WrongSecret:
+        _persist_failure(path, header, backoff, now)
+        raise
+    except C.ContainerError as e:
+        raise VaultError(str(e)) from e
+
+    try:
+        session = _open(path, mk, header)
+    except C.ContainerError as e:
+        raise VaultError(str(e)) from e
+
+    # --- gate facial --------------------------------------------------
+    require_face = header.get("policy", {}).get("require_face", True)
+    if require_face and C.secret_exists(path, C.FACES_NAME):
+        if face_gate is None:
+            session.close()
+            raise VaultError(
+                "Esta bóveda exige reconocimiento facial. Instala el extra 'face' "
+                "o entra con la frase de recuperación."
+            )
+        try:
+            result = face_gate(session)
+        except Exception as e:  # noqa: BLE001 - cualquier fallo del motor = rechazo seguro
+            session.close()
+            raise VaultError(f"Fallo en la verificación facial: {e}") from e
+        if not getattr(result, "ok", False):
+            session.close()
+            _persist_failure(path, header, backoff, now)
+            raise FaceRejected(getattr(result, "reason", "no coincide"),
+                               float(getattr(result, "score", 0.0)))
+
+    _persist_success(path, header, backoff)
+    return session
+
+
+def vault_status(path: os.PathLike | str) -> dict:
+    """Estado para la UI / el comando `status` (no descifra nada)."""
+    path = Path(path)
+    header = C.read_header(path)
+    backoff = BackoffPolicy().load_state(header.get("backoff"))
+    policy = header.get("policy", {})
+    stats = header.get("stats", {})
+    return {
+        "vault_id": header.get("vault_id"),
+        "has_face": C.secret_exists(path, C.FACES_NAME),
+        "require_face": policy.get("require_face", True),
+        "auto_lock_seconds": policy.get("auto_lock_seconds"),
+        "failures": backoff.failures,
+        "locked_for": backoff.remaining(),
+        "wipe_flag": backoff.wiped,
+        "last_unlock": stats.get("last_unlock"),
+        "failed_total": stats.get("failed_total", 0),
+    }

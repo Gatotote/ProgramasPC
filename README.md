@@ -31,9 +31,34 @@ desbloqueo forzado.
 |------|-----------|--------|
 | 1 | Núcleo cripto + contenedor + CLI de pruebas + tests | ✅ |
 | 2 | Motor facial (antelopev2): cámara, embeddings, enrolado, liveness | ✅ |
-| 3 | Integración de desbloqueo: PIN → MK → gate facial, rate-limiting | ⏳ |
+| 3 | Desbloqueo completo: `open_vault` (PIN → MK → gate facial), backoff | ✅ |
 | 4 | GUI PySide6: asistente, ventana principal, vista de desbloqueo | ⏳ |
 | 5 | Auto-bloqueo, exclusión Baloo, `shred` del original, empaquetado | ⏳ |
+
+### Desbloqueo (Fase 3)
+
+`vault.open_vault(path, pin=…, phrase=…, face_gate=…)`:
+
+1. Lee el bloqueo por intentos del `header.json` (en claro; no hay MK antes del
+   PIN). Si está dentro de la ventana → `VaultLocked(retry_after)`.
+2. `Argon2id(PIN)` desenvuelve la MK. Si falla → `BackoffPolicy.register_failure`
+   (2 s → 6 s → 18 s …, tope 15 min) y se persiste en el header.
+3. Si hay `faces.enc` y la política lo exige, ejecuta `face_gate(session)`:
+   cámara → **liveness por movimiento** (giro de cabeza / acercarse / parpadeo)
+   + similitud coseno ≥ umbral en ≥ 6 frames. Rechazo → cuenta como intento.
+4. `phrase` (24 palabras) salta el bloqueo y el rostro — es la vía de escape.
+
+`vault/` no importa `face/`: el `face_gate` lo inyecta la CLI/GUI vía
+`face.make_gate()`. `BackoffPolicy` vive en `bovedafacial/throttle.py`.
+
+```bash
+uv run bovedafacial init   ~/secreta.vault
+uv run --extra face bovedafacial enroll ~/secreta.vault
+uv run bovedafacial status ~/secreta.vault
+uv run --extra face bovedafacial ls ~/secreta.vault /      # pide PIN + rostro
+uv run bovedafacial ls ~/secreta.vault / --recovery        # frase, sin rostro
+uv run bovedafacial ls ~/secreta.vault / --pin-only        # SOLO pruebas
+```
 
 ### Motor facial (Fase 2)
 

@@ -4,10 +4,12 @@ reintentos (backoff exponencial) para frenar ataques por fuerza bruta.
 
 from __future__ import annotations
 
-import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 import numpy as np
+
+# Reexportado por compatibilidad: BackoffPolicy vive ahora en bovedafacial.throttle
+from ..throttle import BackoffPolicy  # noqa: F401
 
 # Umbral por defecto de similitud coseno para antelopev2 (ResNet100 glint360k).
 # Con embeddings L2-normalizados: >0.45 suele ser la misma persona; se puede
@@ -45,47 +47,3 @@ def verify(embedding: np.ndarray, templates: np.ndarray, *,
            threshold: float = DEFAULT_THRESHOLD, top_k: int = 3) -> VerifyResult:
     s = score_against(embedding, templates, top_k=top_k)
     return VerifyResult(matched=s >= threshold, score=s, threshold=threshold)
-
-
-@dataclass
-class BackoffPolicy:
-    """Bloqueo creciente tras fallos consecutivos. Serializable a dict para
-    persistirlo junto a la bóveda (lo hará la Fase 3)."""
-
-    base_delay_s: float = 2.0
-    factor: float = 3.0
-    max_delay_s: float = 900.0
-    hard_limit: int | None = 15      # None = sin borrado; la Fase 3 puede actuar aquí
-    failures: int = 0
-    locked_until: float = 0.0
-
-    def register_failure(self, *, now: float | None = None) -> float:
-        now = time.time() if now is None else now
-        self.failures += 1
-        delay = min(self.base_delay_s * (self.factor ** (self.failures - 1)), self.max_delay_s)
-        self.locked_until = now + delay
-        return self.locked_until
-
-    def register_success(self) -> None:
-        self.failures = 0
-        self.locked_until = 0.0
-
-    def remaining(self, *, now: float | None = None) -> float:
-        now = time.time() if now is None else now
-        return max(0.0, self.locked_until - now)
-
-    @property
-    def is_locked(self) -> bool:
-        return self.remaining() > 0.0
-
-    @property
-    def wiped(self) -> bool:
-        return self.hard_limit is not None and self.failures >= self.hard_limit
-
-    def to_dict(self) -> dict:
-        return {"failures": self.failures, "locked_until": self.locked_until}
-
-    def load_state(self, d: dict) -> "BackoffPolicy":
-        self.failures = int(d.get("failures", 0))
-        self.locked_until = float(d.get("locked_until", 0.0))
-        return self

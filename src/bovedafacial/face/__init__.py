@@ -16,6 +16,7 @@ bóveda no depende de ellos. Requiere:  uv sync --extra face
 from .camera import BaseCamera, CameraError, FileCamera, V4L2Camera, default_camera, list_v4l2_devices
 from .engine import EngineError, FaceEngine, available_providers, models_present, pick_providers
 from .enroll import EnrollError, EnrollSession, Template, enroll_from_frames
+from .gate import GateResult, make_gate, verify_live
 from .liveness import Challenge, LivenessSession
 from .quality import QualityGate, eye_aspect_ratio, sharpness
 from .store import has_template, load_template, save_template
@@ -26,6 +27,7 @@ __all__ = [
     "BaseCamera", "CameraError", "FileCamera", "V4L2Camera", "default_camera", "list_v4l2_devices",
     "EngineError", "FaceEngine", "available_providers", "models_present", "pick_providers",
     "EnrollError", "EnrollSession", "Template", "enroll_from_frames",
+    "GateResult", "make_gate", "verify_live",
     "Challenge", "LivenessSession",
     "QualityGate", "eye_aspect_ratio", "sharpness",
     "has_template", "load_template", "save_template",

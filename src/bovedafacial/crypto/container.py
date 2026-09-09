@@ -50,6 +50,13 @@ class ContainerError(Exception):
 
 # --- cabecera --------------------------------------------------------------
 
+DEFAULT_POLICY = {
+    "require_face": True,       # exigir rostro si hay plantilla enrolada
+    "auto_lock_seconds": 180,   # bloqueo por inactividad (lo aplica la UI)
+    "face_threshold": None,     # None = usar el de la plantilla
+}
+
+
 def write_header(
     vault_dir: Path,
     *,
@@ -57,6 +64,7 @@ def write_header(
     recovery_slot: KeySlot,
     kdf: dict = DEFAULT_KDF,
     chunk_size: int = DEFAULT_CHUNK_SIZE,
+    policy: dict | None = None,
 ) -> dict:
     header = {
         "version": CONTAINER_VERSION,
@@ -68,6 +76,10 @@ def write_header(
             "pin": pin_slot.to_json(),
             "recovery": recovery_slot.to_json(),
         },
+        "policy": {**DEFAULT_POLICY, **(policy or {})},
+        # estado en claro (no hay MK disponible antes de acertar el PIN)
+        "backoff": {"failures": 0, "locked_until": 0.0},
+        "stats": {"last_unlock": None, "failed_total": 0},
     }
     _atomic_write(vault_dir / HEADER_NAME, json.dumps(header, indent=2).encode("utf-8"))
     return header
@@ -81,7 +93,18 @@ def read_header(vault_dir: Path) -> dict:
     header = json.loads(raw)
     if header.get("version") != CONTAINER_VERSION:
         raise ContainerError(f"Versión de contenedor no soportada: {header.get('version')}")
+    header.setdefault("policy", dict(DEFAULT_POLICY))
+    header.setdefault("backoff", {"failures": 0, "locked_until": 0.0})
+    header.setdefault("stats", {"last_unlock": None, "failed_total": 0})
     return header
+
+
+def save_header(vault_dir: Path, header: dict) -> None:
+    _atomic_write(vault_dir / HEADER_NAME, json.dumps(header, indent=2).encode("utf-8"))
+
+
+def secret_exists(vault_dir: Path, name: str) -> bool:
+    return (Path(vault_dir) / name).exists()
 
 
 def init_layout(vault_dir: Path) -> None:
