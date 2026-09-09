@@ -63,7 +63,11 @@ if _HEIF_OK:
     SALIDA["HEIC (moderno, ligero)"] = {"ext": "heic", "fmt": "HEIF", "sin_alpha": False,
                                         "params": {"quality": 60}}
 
-LADOS_MAX = ["Tamaño original", "4000 px", "2560 px", "1920 px", "1280 px", "1024 px"]
+LADOS_MAX = ["Tamaño original", "4000 px", "2560 px", "1920 px", "1600 px", "1280 px", "1024 px"]
+
+# Ajuste recomendado para fotos de expediente / reconocimiento facial
+# (Administrativo + Centro de Control): JPEG, lado mayor 1600 px, calidad alta.
+PRESET_EXPEDIENTE = {"formato": "JPEG (calidad alta)", "tamano": "1600 px"}
 
 FILTRO_ARCHIVOS = (
     "Imágenes y RAW ("

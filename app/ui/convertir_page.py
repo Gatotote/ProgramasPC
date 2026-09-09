@@ -157,6 +157,24 @@ class ConvertirPage(QWidget):
         fila_tipo.addStretch()
         salida.layout_panel.addLayout(fila_tipo)
 
+        # Ajuste rápido: deja las fotos listas para los expedientes.
+        fila_preset = QHBoxLayout()
+        fila_preset.setSpacing(8)
+        lbl_preset = QLabel("Ajuste rápido:")
+        lbl_preset.setStyleSheet("color:#8b97ad;")
+        self.btn_preset_exp = QPushButton("Para expediente")
+        self.btn_preset_exp.setObjectName("ghost")
+        self.btn_preset_exp.setToolTip(
+            "Deja las fotos como JPEG, 1600 px máximo y calidad alta:\n"
+            "el formato y tamaño correctos para subir a Administrativo\n"
+            "y para el reconocimiento facial de Centro de Control."
+        )
+        self.btn_preset_exp.clicked.connect(self._preset_expediente)
+        fila_preset.addWidget(lbl_preset)
+        fila_preset.addWidget(self.btn_preset_exp)
+        fila_preset.addStretch()
+        salida.layout_panel.addLayout(fila_preset)
+
         # Fila de tamaño, solo para imágenes
         self.fila_tam = QWidget()
         lay_tam = QHBoxLayout(self.fila_tam)
@@ -270,6 +288,22 @@ class ConvertirPage(QWidget):
         es_imagen = tipo == "Imagen"
         self.fila_tam.setVisible(es_imagen)
         self.aviso.setVisible(not es_imagen and not ffmpeg.disponible())
+
+    def _preset_expediente(self):
+        """Configura salida = JPEG · 1600 px · calidad alta, el formato y
+        tamaño que piden los expedientes de Administrativo y el
+        reconocimiento facial de Centro de Control."""
+        p = imagenes.PRESET_EXPEDIENTE
+        self.combo_tipo.setCurrentText("Imagen")  # dispara _recargar_formatos
+        i = self.combo_formato.findText(p["formato"])
+        if i >= 0:
+            self.combo_formato.setCurrentIndex(i)
+        j = self.combo_tam.findText(p["tamano"])
+        if j >= 0:
+            self.combo_tam.setCurrentIndex(j)
+        self.lbl_sub.setText(
+            f"Ajuste para expediente: {p['formato']} · {p['tamano']} máx."
+        )
 
     # -- conversión -----------------------------------------------------
 
