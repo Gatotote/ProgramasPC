@@ -4,6 +4,7 @@ Reutilizable pasándole la lista de `kinds` que muestra."""
 from __future__ import annotations
 
 from PySide6.QtCore import Qt
+from PySide6.QtGui import QColor
 from PySide6.QtWidgets import (
     QAbstractItemView,
     QApplication,
@@ -29,6 +30,20 @@ _COPY_KEY = {
     ItemKind.ACCOUNT: "numero", ItemKind.CONTACT: "telefono",
     ItemKind.INSURANCE: "poliza", ItemKind.WILL: "ubicacion", ItemKind.NOTE: "contenido",
 }
+
+
+_STR_COLOR = {"débil": "#e5675b", "aceptable": "#e0b341", "fuerte": "#41b955"}
+
+
+def _strength_cell(kind: ItemKind, fields: dict):
+    if kind is not ItemKind.PASSWORD:
+        return "", None
+    pw = fields.get("password", "")
+    if not pw:
+        return "—", None
+    from ...pwgen import strength
+    w = strength(pw)
+    return w.capitalize(), _STR_COLOR.get(w)
 
 
 def _preview(kind: ItemKind, fields: dict) -> str:
@@ -65,8 +80,9 @@ class ItemsView(QWidget):
         head.addWidget(self.new_btn)
         v.addLayout(head)
 
-        self.table = QTableWidget(0, 4)
-        self.table.setHorizontalHeaderLabels(["Nombre", "Tipo", "Detalle", "Modificado"])
+        self.table = QTableWidget(0, 5)
+        self.table.setHorizontalHeaderLabels(
+            ["Nombre", "Tipo", "Detalle", "Fortaleza", "Modificado"])
         self.table.verticalHeader().setVisible(False)
         self.table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         self.table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
@@ -105,11 +121,15 @@ class ItemsView(QWidget):
             self._set(i, 0, r["name"], r["path"])
             self._set(i, 1, KIND_LABELS[kind])
             self._set(i, 2, _preview(kind, it["fields"]))
-            self._set(i, 3, _fmt(r["modified"]))
+            word, color = _strength_cell(kind, it["fields"])
+            self._set(i, 3, word, color=color)
+            self._set(i, 4, _fmt(r["modified"]))
         self.count_lbl.setText(f"{len(rows)} elemento(s)")
 
-    def _set(self, row, col, text, path=None) -> None:
+    def _set(self, row, col, text, path=None, color=None) -> None:
         item = QTableWidgetItem(text or "")
+        if color is not None:
+            item.setForeground(QColor(color))
         if path is not None:
             item.setData(Qt.ItemDataRole.UserRole, path)
         self.table.setItem(row, col, item)

@@ -173,3 +173,41 @@ def scroll_page(widget: QWidget):
     sa.setWidgetResizable(True)
     sa.setWidget(widget)
     return sa
+
+
+class StrengthMeter(QWidget):
+    """Indicador visual de fortaleza: 3 segmentos rojo / amarillo / verde."""
+
+    _COLOR = {1: "#e5675b", 2: "#e0b341", 3: "#41b955"}
+    _WORD = {1: "Débil", 2: "Aceptable", 3: "Fuerte"}
+    _LEVEL = {"débil": 1, "aceptable": 2, "fuerte": 3}
+    _OFF = "rgba(128,128,128,0.30)"
+
+    def __init__(self, parent=None) -> None:
+        super().__init__(parent)
+        row = QHBoxLayout(self)
+        row.setContentsMargins(0, 2, 0, 2)
+        row.setSpacing(4)
+        self._segs = []
+        for _ in range(3):
+            s = QFrame()
+            s.setFixedSize(44, 6)
+            s.setStyleSheet(f"background:{self._OFF};border:none;border-radius:3px;")
+            self._segs.append(s)
+            row.addWidget(s)
+        self._lbl = QLabel("")
+        self._lbl.setStyleSheet("font-size:11px;")
+        row.addWidget(self._lbl)
+        row.addStretch(1)
+
+    def set_password(self, pw: str) -> None:
+        from ..pwgen import strength
+
+        level = self._LEVEL[strength(pw)] if pw else 0
+        col = self._COLOR.get(level, self._OFF)
+        for i, seg in enumerate(self._segs):
+            fill = col if i < level else self._OFF
+            seg.setStyleSheet(f"background:{fill};border:none;border-radius:3px;")
+        self._lbl.setText(self._WORD.get(level, ""))
+        self._lbl.setStyleSheet(
+            f"font-size:11px;color:{col if level else 'palette(mid)'};")

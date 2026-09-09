@@ -18,6 +18,7 @@ from PySide6.QtWidgets import (
 from ..pwgen import generate
 from ..vault import KIND_LABELS, spec_for
 from ..vault.items import coerce_kind
+from .widgets import StrengthMeter
 
 
 class ItemEditor(QDialog):
@@ -53,6 +54,11 @@ class ItemEditor(QDialog):
                 if fs.secret:
                     ed.setEchoMode(QLineEdit.EchoMode.Password)
                     v.addLayout(self._secret_row(ed, fs.key))
+                    if fs.key == "password":
+                        meter = StrengthMeter()
+                        ed.textChanged.connect(meter.set_password)
+                        meter.set_password(ed.text())
+                        v.addWidget(meter)
                 else:
                     v.addWidget(ed)
             self._edits[fs.key] = ed
@@ -60,6 +66,8 @@ class ItemEditor(QDialog):
         v.addStretch(1)
         bb = QDialogButtonBox(QDialogButtonBox.StandardButton.Save
                               | QDialogButtonBox.StandardButton.Cancel)
+        bb.button(QDialogButtonBox.StandardButton.Save).setText("Guardar")
+        bb.button(QDialogButtonBox.StandardButton.Cancel).setText("Cancelar")
         bb.accepted.connect(self._try_accept)
         bb.rejected.connect(self.reject)
         v.addWidget(bb)
@@ -69,22 +77,22 @@ class ItemEditor(QDialog):
         row.setSpacing(6)
         row.addWidget(ed, 1)
 
-        eye = QPushButton("👁")
-        eye.setFixedWidth(34)
+        eye = QPushButton("Ver")
         eye.setCheckable(True)
-        eye.toggled.connect(lambda on: ed.setEchoMode(
-            QLineEdit.EchoMode.Normal if on else QLineEdit.EchoMode.Password))
+        eye.setToolTip("Mostrar u ocultar")
+        eye.toggled.connect(lambda on: (
+            ed.setEchoMode(QLineEdit.EchoMode.Normal if on
+                           else QLineEdit.EchoMode.Password),
+            eye.setText("Ocultar" if on else "Ver")))
         row.addWidget(eye)
 
-        cp = QPushButton("⧉")
-        cp.setFixedWidth(34)
+        cp = QPushButton("Copiar")
         cp.clicked.connect(lambda: QApplication.clipboard().setText(ed.text()))
         row.addWidget(cp)
 
         if key in ("password", "poliza"):
-            gen = QPushButton("🎲")
-            gen.setFixedWidth(34)
-            gen.setToolTip("Generar")
+            gen = QPushButton("Generar")
+            gen.setToolTip("Crear una contraseña segura")
             gen.clicked.connect(lambda: ed.setText(generate(20)))
             row.addWidget(gen)
         return row
