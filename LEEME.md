@@ -75,11 +75,13 @@ app/
 generar_recursos.py         Genera assets/ (emblema, logos, banner) con Pillow
 assets/                     icono.ico, logo_azul|claro|oscuro.png, banner.png
 DescargadorYConversor.spec  Config de PyInstaller
-installer/instalador.iss    Script de Inno Setup
-construir_instalador.ps1    Build: PyInstaller + Inno Setup → Output/…-Setup.exe
+installer/instalador.iss    Script de Inno Setup (Windows)
+installer/instalar-linux.sh Instala el .tar.gz ya compilado en el equipo del usuario (Linux)
+construir_instalador.ps1    Build Windows: PyInstaller + Inno Setup → Output/…-Setup.exe
+empaquetar-linux.sh         Build Linux: PyInstaller + tar.gz → Output/…-Linux.tar.gz
 VERSION                     Versión de la app
 generar_icono.py            (1ª versión) genera cat_icon.ico
-descargador_videos.py       Interfaz antigua en Tkinter (se conserva de momento)
+abrir.sh / abrir.bat        Lanzadores directos (Linux / Windows), sin pasar por el instalador
 ```
 
 ## Recursos gráficos
