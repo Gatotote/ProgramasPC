@@ -1,0 +1,13 @@
+# Entorno y caché
+.venv/
+__pycache__/
+*.pyc
+
+# Medios pesados (van en el instalador, no en git): videos, escenas convertidas y HDRIs.
+# Se versionan solo el catálogo, créditos y guías.
+medios/videos/*
+!medios/videos/CREDITOS.txt
+medios/modelos3d/**/*.glb
+medios/hdri/*.exr
+medios/hdri/*.hdr
+medios/hdri/listos/*.npy

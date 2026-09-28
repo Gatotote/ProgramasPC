@@ -1,0 +1,30 @@
+Modelos 3D incluidos con EstrésPC (uso comercial permitido con atribución)
+
+cesium/  — tomados de CesiumGS/cesium, commit 46ed67c0bf601b52f3b1acdb7bb13d5decc5a181,
+           carpeta Apps/SampleData/models (https://github.com/CesiumGS/cesium)
+  GroundVehicle.glb, CesiumDrone.glb, Cesium_Air.glb, CesiumMilkTruck.glb, CesiumBalloon.glb
+      © Cesium GS, Inc. — Apache License 2.0 (CesiumMilkTruck también CC BY 4.0)
+  Wood_Tower.glb
+      «Wooden Watch Tower» © 2012 Dennis Haupt — CC BY 3.0
+      http://www.blendswap.com/blends/view/61653
+
+NO incluido: Sponza de KhronosGroup/glTF-Sample-Assets — sus archivos están bajo el
+«CRYENGINE Limited License Agreement» (uso dentro de juegos hechos con CRYENGINE), no apto
+para una herramienta comercial. Alternativa: Intel Sponza (2022) — OJO: su encabezado dice
+«personal y educativo; uso comercial limitado a marketing e impresos» aunque adjunta CC BY 4.0:
+usar solo en la copia propia y en videos de GatoTec, NO en instaladores para terceros.
+
+bistro/  — Amazon Lumberyard Bistro (2017), Open Research Content Archive (ORCA) de NVIDIA
+      © Amazon Lumberyard — Creative Commons CC BY 4.0
+      http://developer.nvidia.com/orca/amazon-lumberyard-bistro
+      Cita sugerida: "Amazon Lumberyard Bistro, Open Research Content Archive (ORCA)",
+      Amazon Lumberyard, julio de 2017.
+
+sponza_intel/ — Intel Sponza 2022 (main_sponza), encargado por Frank Meinl, patrocinado por Anton
+      Kaplanyan — Intel Sample Library. SOLO USO LOCAL (ver nota de licencia arriba): no incluir
+      en instaladores para terceros. Texturas reducidas a 1024 px con herramientas/convertir_escena.py.
+
+jungle_ruins/ — «Jungle Ruins 1.0b», Cristiano Siqueira; apoyo artístico Charlene Teets
+      (Intel Sample Library, 2024) — Creative Commons CC BY 4.0.
+      Simplificada a ~3 M triángulos (Decimate 0.24) y texturas a 1024 px para caber en 6 GB de VRAM;
+      la vegetación dispersa por nodos de geometría del original no está incluida.

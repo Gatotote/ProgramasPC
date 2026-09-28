@@ -1,0 +1,75 @@
+{
+  "_nota": "Catálogo de escenas para el render 3D. «camara»: dentro (recorrer un escenario) o fuera (girar alrededor de un objeto). «hdri»: archivo de medios/hdri/listos/. «solo_local»: no incluir en instaladores para terceros (licencia).",
+  "escenas": [
+    {
+      "nombre": "Bistro (calle de noche/día)",
+      "archivo": "bistro/bistro_exterior.glb",
+      "hdri": "san_giuseppe_bridge_4k.npy",
+      "camara": "dentro",
+      "exposicion": 0.6
+    },
+    {
+      "nombre": "Sponza (Intel 2022)",
+      "archivo": "sponza_intel/sponza_main.glb",
+      "hdri": "historic_cloister_passage_4k.npy",
+      "camara": "dentro",
+      "exposicion": 0.8,
+      "ruta": [
+        [
+          -11,
+          1.7,
+          0
+        ],
+        [
+          11,
+          1.7,
+          0
+        ]
+      ],
+      "solo_local": true
+    },
+    {
+      "nombre": "Jungle Ruins (Intel 2024)",
+      "archivo": "jungle_ruins/jungle_ruins.glb",
+      "hdri": "cielo_generado.npy",
+      "camara": "dentro",
+      "exposicion": 0.8,
+      "ruta": [
+        [
+          480,
+          6,
+          -760
+        ],
+        [
+          610,
+          6,
+          -760
+        ],
+        [
+          760,
+          10,
+          -560
+        ],
+        [
+          880,
+          14,
+          -500
+        ]
+      ]
+    },
+    {
+      "nombre": "Vehículo terrestre (Cesium)",
+      "archivo": "cesium/GroundVehicle.glb",
+      "hdri": "industrial_pipe_and_valve_01_4k.npy",
+      "camara": "fuera",
+      "exposicion": 1.0
+    },
+    {
+      "nombre": "Torre de madera",
+      "archivo": "cesium/Wood_Tower.glb",
+      "hdri": "historic_cloister_passage_4k.npy",
+      "camara": "fuera",
+      "exposicion": 0.8
+    }
+  ]
+}
