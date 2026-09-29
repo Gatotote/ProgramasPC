@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
+  <!-- Icono del Organizador de Archivos: anillo + simbolo de nodos (dibujo.svg), color HUD cian -->
+  <circle cx="128" cy="128" r="118" fill="none" stroke="#2de2ff" stroke-width="6"/>
+  <g transform="translate(-10.5,-140.5) scale(2.104)" fill="#2de2ff"
+     stroke="#2de2ff" stroke-width="1.9" stroke-linecap="round">
+    <!-- conectores -->
+    <path d="m 47.555374,126.46363 32.825835,-21.0422" fill="none"/>
+    <path d="m 64.599088,128.18096 25.672179,-0.10228" fill="none"/>
+    <path d="m 61.152276,138.12475 14.413525,9.85541" fill="none"/>
+    <!-- nodos -->
+    <ellipse cx="46.713684" cy="128.25221" rx="17.885872" ry="16.72855" stroke="none"/>
+    <circle cx="84.694862" cy="103.00158" r="9.1533575" stroke="none"/>
+    <ellipse cx="99.529617" cy="128.04179" rx="9.2585688" ry="9.5742016" stroke="none"/>
+    <circle cx="83.642746" cy="153.50285" r="9.7846231" stroke="none"/>
+  </g>
+</svg>
