@@ -1,14 +1,21 @@
 """Calificación de una prueba de estrés y la ventana de resultados (con tacómetro).
 
-Calificación (0-100 %):
-  - Temperatura máxima (60 %): CPU ≤70 °C = 100, 95 °C = 0; GPU ≤65 °C = 100, 87 °C = 0.
-  - Frecuencia sostenida (40 %): promedio bajo carga (uso > 80 %) / máximo visto en la prueba.
+Calificación (0-100 %), por CPU y GPU:
+  - Temperatura máxima (35 %): CPU ≤70 °C = 100, 95 °C = 0; GPU ≤65 °C = 100, 87 °C = 0.
+  - Rendimiento (40 %): MHz promedio bajo carga (uso > 80 %) / máximo del equipo
+    (cpuinfo_max_freq; clocks.max.graphics de nvidia-smi). ≥85 % = 100, ≤40 % = 0.
+    Así un equipo que rinde más con la misma temperatura califica mejor (y uno en modo
+    ahorro, sin turbo, no sale "perfecto" solo por ir frío).
+  - Estabilidad (25 %): promedio bajo carga / pico visto en la prueba.
     ≥95 % = 100, ≤60 % = 0. Mide cuánto se frena el equipo por calor (throttling).
   - Topes: si hubo errores de cálculo, máximo 25 %; si se detuvo por temperatura, máximo 40 %.
 """
 
+import glob
 import math
+import shutil
 import statistics
+import subprocess
 
 from PySide6.QtCore import QPointF, QRectF, Qt, QUrl, QVariantAnimation
 from PySide6.QtGui import QColor, QDesktopServices, QFont, QPainter, QPen
@@ -26,12 +33,41 @@ def _lineal(v, bueno, malo):
     return max(0.0, min(100.0, (v - malo) / (bueno - malo) * 100))
 
 
-def calcular(muestras, estados, motivo, segundos):
+def _leer_mhz_cpu():
+    maximos = []
+    for f in glob.glob("/sys/devices/system/cpu/cpu[0-9]*/cpufreq/cpuinfo_max_freq"):
+        try:
+            with open(f) as h:
+                maximos.append(int(h.read()) / 1000)
+        except (OSError, ValueError):
+            pass
+    return max(maximos) if maximos else None
+
+
+def _leer_mhz_gpu():
+    if not shutil.which("nvidia-smi"):
+        return None
+    try:
+        salida = subprocess.run(["nvidia-smi", "--query-gpu=clocks.max.graphics",
+                                 "--format=csv,noheader,nounits"],
+                                capture_output=True, text=True, timeout=5).stdout
+        return float(salida.split()[0])
+    except (OSError, subprocess.SubprocessError, ValueError, IndexError):
+        return None
+
+
+def mhz_maximos():
+    """Frecuencia máxima que el hardware puede dar: {"CPU": MHz, "GPU": MHz} (None si no se sabe)."""
+    return {"CPU": _leer_mhz_cpu(), "GPU": _leer_mhz_gpu()}
+
+
+def calcular(muestras, estados, motivo, segundos, maximos=None):
     """muestras: [(t, {sensor: valor})]; estados: {prueba: (estado, errores)}."""
     def serie(clave, uso=None):
         return [d[clave] for _t, d in muestras
                 if d.get(clave) is not None and (uso is None or (d.get(uso) or 0) > 80)]
 
+    maximos = mhz_maximos() if maximos is None else maximos
     r = {"segundos": segundos, "partes": []}
     for pieza, temp, mhz, uso, t_bueno, t_malo in (("CPU", "cpu_temp", "cpu_mhz", "cpu_uso", 70, 95),
                                                    ("GPU", "gpu_temp", "gpu_mhz", "gpu_uso", 65, 87)):
@@ -43,10 +79,14 @@ def calcular(muestras, estados, motivo, segundos):
         t_max = max(temps) if temps else None
         prom, pico = statistics.mean(bajo_carga), max(todas)
         r[f"{pieza}_temp_max"], r[f"{pieza}_mhz_prom"], r[f"{pieza}_mhz_pico"] = t_max, prom, pico
-        r["partes"].append((f"Temperatura {pieza}", _lineal(t_max, t_bueno, t_malo), 0.6,
+        tope = maximos.get(pieza)
+        r["partes"].append((f"Temperatura {pieza}", _lineal(t_max, t_bueno, t_malo), 0.35,
                             f"máx. {t_max:.0f} °C" if t_max is not None else "sin sensor"))
-        r["partes"].append((f"Frecuencia sostenida {pieza}", _lineal(prom / pico, 0.95, 0.60), 0.4,
-                            f"{prom:.0f} de {pico:.0f} MHz ({prom / pico:.0%})"))
+        r["partes"].append((f"Rendimiento {pieza}", _lineal(prom / tope, 0.85, 0.40) if tope else None,
+                            0.40, f"{prom:.0f} de {tope:.0f} MHz máx. del equipo ({prom / tope:.0%})"
+                            if tope else "no se conoce la frecuencia máxima"))
+        r["partes"].append((f"Estabilidad {pieza}", _lineal(prom / pico, 0.95, 0.60), 0.25,
+                            f"{prom:.0f} de {pico:.0f} MHz pico ({prom / pico:.0%})"))
     validas = [(p, w) for _n, p, w, _d in r["partes"] if p is not None]
     puntaje = sum(p * w for p, w in validas) / sum(w for _p, w in validas) if validas else 100.0
 
