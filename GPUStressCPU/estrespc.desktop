@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=EstrésPC
+Comment=Pruebas de estrés de CPU, RAM, GPU, video 4K y disco
+Exec=/home/gatotote/Proyectos/EstresPC/ejecutar.sh
+Icon=/home/gatotote/Proyectos/EstresPC/estrespc/icono.svg
+Terminal=false
+Categories=System;Monitor;
+StartupWMClass=estrespc
