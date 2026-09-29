@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=GPUStressCPU
+Comment=Pruebas de estrés y benchmark: CPU, GPU, RAM, disco y video 4K
+Exec=/home/gatotote/Proyectos/ProgramasPC/GPUStressCPU/ejecutar.sh
+Icon=/home/gatotote/Proyectos/ProgramasPC/GPUStressCPU/estrespc/icono.svg
+Terminal=false
+Categories=System;Monitor;
+StartupWMClass=gpustresscpu

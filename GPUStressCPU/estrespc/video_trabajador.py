@@ -115,7 +115,7 @@ def main():
     if args.mostrar:
         ventana = subprocess.Popen(
             ["mpv", "--loop-file=inf", "--hwdec=nvdec", "--no-audio",
-             "--title=EstrésPC — video 4K", "--autofit=50%", "--really-quiet", videos[0]],
+             "--title=GPUStressCPU — video 4K", "--autofit=50%", "--really-quiet", videos[0]],
             env={**os.environ, **ENTORNO_NVIDIA},
             stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
             start_new_session=True)

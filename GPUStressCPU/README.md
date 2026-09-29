@@ -1,11 +1,11 @@
-# EstrésPC
+# GPUStressCPU
 
 Pruebas de estrés para Linux con ventana gráfica: CPU, RAM, GPU, video 4K y disco, con
 gráficas en vivo, límites de temperatura y detección de errores.
 
 ## Uso
 
-    ./ejecutar.sh            # o el icono «EstrésPC» del escritorio / menú
+    ./ejecutar.sh            # o el icono «GPUStressCPU» del escritorio / menú
     ./ejecutar.sh --version
 
 Requisitos del sistema: `stress-ng`, `nvidia-smi` (opcional, para leer la GPU

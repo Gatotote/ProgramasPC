@@ -1,4 +1,4 @@
-"""Convierte una escena 3D (FBX, glTF o USD) a un solo .glb listo para el render de EstrésPC.
+"""Convierte una escena 3D (FBX, glTF o USD) a un solo .glb listo para el render de GPUStressCPU.
 Se corre con Blender en segundo plano:
 
     blender --background --factory-startup --python convertir_escena.py -- ORIGEN DESTINO.glb [MAX_PX] [MAX_TRIS]

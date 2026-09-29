@@ -1,4 +1,4 @@
-"""Ventana principal de EstrésPC."""
+"""Ventana principal de GPUStressCPU."""
 
 import csv
 import datetime as dt
@@ -95,7 +95,7 @@ class Ventana(QMainWindow):
 
     def __init__(self):
         super().__init__()
-        self.setWindowTitle(f"EstrésPC {__version__}")
+        self.setWindowTitle(f"GPUStressCPU {__version__}")
         ruta_icono = os.path.join(os.path.dirname(__file__), "icono.svg")
         self.setWindowIcon(QIcon(ruta_icono))
         self.resize(1400, 900)
@@ -396,7 +396,7 @@ class Ventana(QMainWindow):
         separador.setSizes([650, 200])
         der.addWidget(separador, 1)
 
-        pie = QLabel(f"EstrésPC v{__version__}  ·  {AUTOR}")
+        pie = QLabel(f"GPUStressCPU v{__version__}  ·  {AUTOR}")
         pie.setStyleSheet("color:#8a8f98")
         self.statusBar().addPermanentWidget(pie)
 
@@ -742,7 +742,7 @@ class Ventana(QMainWindow):
         self.modo_fila = False
         activas = self._seleccion()
         if not activas:
-            QMessageBox.information(self, "EstrésPC", "Selecciona al menos una prueba.")
+            QMessageBox.information(self, "GPUStressCPU", "Selecciona al menos una prueba.")
             return
         self.log.clear()
         d = self.sensores.leer()
@@ -812,7 +812,7 @@ class Ventana(QMainWindow):
             fraccion = max(0.1, min(p["GPU"].memoria, libre / vram))
             if fraccion < p["GPU"].memoria:
                 p["GPU"].memoria = fraccion
-                self._registrar("EstrésPC", f"Con Video 4K activo, la prueba GPU usa "
+                self._registrar("GPUStressCPU", f"Con Video 4K activo, la prueba GPU usa "
                                 f"{fraccion:.0%} de la VRAM para dejar lugar a los videos")
         p["Disco"].carpeta = self.disco_carpeta.currentText()
         p["Disco"].megas = self.disco_mb.value()
@@ -834,7 +834,7 @@ class Ventana(QMainWindow):
             CARPETA_REGISTROS, self.hora_inicio.strftime("%Y-%m-%d_%H%M%S"))
         os.makedirs(self.carpeta_corrida, exist_ok=True)
 
-        self._registrar("EstrésPC", f"Inicio: {', '.join(sorted(activas))} · "
+        self._registrar("GPUStressCPU", f"Inicio: {', '.join(sorted(activas))} · "
                         f"{self.duracion_cb.currentText()}")
         if activas & {"GPU", "Video"} or self.vigilar_gpu.isChecked():
             self.nvidia.iniciar()
@@ -848,7 +848,7 @@ class Ventana(QMainWindow):
     def _iniciar_fila(self):
         pasos = self._fila_todas().get(self.fila_cb.currentText())
         if not pasos:
-            QMessageBox.information(self, "EstrésPC", "Elige una fila de tareas.")
+            QMessageBox.information(self, "GPUStressCPU", "Elige una fila de tareas.")
             return
         d = self.sensores.leer()
         if d.get("cargador") is False and QMessageBox.question(
@@ -857,7 +857,7 @@ class Ventana(QMainWindow):
             return
         usa_gpu = any(p["gpu"] not in ("nada", "reposo") for p in pasos)
         if usa_gpu and not self.gpus:
-            QMessageBox.warning(self, "EstrésPC", "Esta fila usa la GPU pero no se encontró ninguna "
+            QMessageBox.warning(self, "GPUStressCPU", "Esta fila usa la GPU pero no se encontró ninguna "
                                 "con OpenCL (espera a que termine «Buscando GPUs…»).")
             return
         self.log.clear()
@@ -871,7 +871,7 @@ class Ventana(QMainWindow):
             CARPETA_REGISTROS, self.hora_inicio.strftime("%Y-%m-%d_%H%M%S"))
         os.makedirs(self.carpeta_corrida, exist_ok=True)
         self.nombre_fila = self.fila_cb.currentText()
-        self._registrar("EstrésPC", f"Inicio de la fila «{self.nombre_fila}» · {self.duracion_cb.currentText()}")
+        self._registrar("GPUStressCPU", f"Inicio de la fila «{self.nombre_fila}» · {self.duracion_cb.currentText()}")
         if usa_gpu or self.vigilar_gpu.isChecked():
             self.nvidia.iniciar()
         self.fila.iniciar(pasos, self.gpu_disp.currentData() or "", videos.lista())
@@ -882,7 +882,7 @@ class Ventana(QMainWindow):
     def detener(self, motivo):
         if not self.motivo_paro:
             self.motivo_paro = motivo
-            self._registrar("EstrésPC", motivo)
+            self._registrar("GPUStressCPU", motivo)
         if self.modo_fila:
             self.fila.detener()
         else:
@@ -894,7 +894,7 @@ class Ventana(QMainWindow):
     def _prueba_terminada(self, nombre):
         prueba = self.pruebas[nombre]
         if prueba.estado in ("errores", "fallo") and not self.motivo_paro:
-            self._registrar("EstrésPC", f"La prueba de {nombre} terminó: "
+            self._registrar("GPUStressCPU", f"La prueba de {nombre} terminó: "
                             f"{TEXTO_ESTADO[prueba.estado]}")
         if any(self.pruebas[n].corriendo() for n in self.activas):
             return
@@ -1051,7 +1051,7 @@ class Ventana(QMainWindow):
             for t, d in self.muestras:
                 w.writerow([t] + ["" if d.get(k) is None else round(d[k], 2) for k in claves])
         lineas = [
-            f"EstrésPC v{__version__}",
+            f"GPUStressCPU v{__version__}",
             f"Inicio: {self.hora_inicio:%Y-%m-%d %H:%M:%S}",
             f"Duración: {time.strftime('%H:%M:%S', time.gmtime(transcurrido))}",
             f"Resultado: {resultado}",
@@ -1077,7 +1077,7 @@ class Ventana(QMainWindow):
         lineas += ["", "Registro:", self.log.toPlainText(), "", AUTOR]
         with open(os.path.join(self.carpeta_corrida, "informe.txt"), "w") as f:
             f.write("\n".join(lineas))
-        self._registrar("EstrésPC", f"Informe guardado en {self.carpeta_corrida}")
+        self._registrar("GPUStressCPU", f"Informe guardado en {self.carpeta_corrida}")
 
     def _abrir_registros(self):
         os.makedirs(CARPETA_REGISTROS, exist_ok=True)
@@ -1085,7 +1085,7 @@ class Ventana(QMainWindow):
 
     def closeEvent(self, ev):
         if self.bench.corriendo():
-            if QMessageBox.question(self, "EstrésPC",
+            if QMessageBox.question(self, "GPUStressCPU",
                                     "Hay un benchmark corriendo. ¿Cancelarlo y salir?") != QMessageBox.Yes:
                 ev.ignore()
                 return
@@ -1093,7 +1093,7 @@ class Ventana(QMainWindow):
             if self.bench.proc and not self.bench.proc.waitForFinished(8000):
                 self.bench.proc.kill()
         if self.inicio is not None:
-            if QMessageBox.question(self, "EstrésPC",
+            if QMessageBox.question(self, "GPUStressCPU",
                                     "Hay una prueba corriendo. ¿Detenerla y salir?") != QMessageBox.Yes:
                 ev.ignore()
                 return

@@ -85,7 +85,7 @@ def descargar(indice, avisar):
         hecho = os.path.getsize(zip_tmp) if os.path.exists(zip_tmp) else 0
         if total and hecho >= total:
             break
-        cab = {"User-Agent": "EstresPC"}
+        cab = {"User-Agent": "GPUStressCPU"}
         if hecho:
             cab["Range"] = f"bytes={hecho}-"
         try:

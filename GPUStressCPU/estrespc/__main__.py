@@ -28,19 +28,19 @@ def tema_oscuro(app):
 
 
 def main():
-    ap = argparse.ArgumentParser(prog="estrespc", description="Pruebas de estrés para Linux")
-    ap.add_argument("--version", action="version", version=f"EstrésPC {__version__} — {AUTOR}")
+    ap = argparse.ArgumentParser(prog="gpustresscpu", description="Pruebas de estrés para Linux")
+    ap.add_argument("--version", action="version", version=f"GPUStressCPU {__version__} — {AUTOR}")
     ap.parse_args()
 
     from PySide6.QtWidgets import QApplication, QMessageBox
     from .ventana import Ventana
 
     app = QApplication(sys.argv)
-    app.setApplicationName("EstrésPC")
-    app.setDesktopFileName("estrespc")
+    app.setApplicationName("GPUStressCPU")
+    app.setDesktopFileName("gpustresscpu")
     tema_oscuro(app)
     if not shutil.which("stress-ng"):
-        QMessageBox.critical(None, "EstrésPC",
+        QMessageBox.critical(None, "GPUStressCPU",
                              "Falta stress-ng. Instálalo con:\n\nsudo pacman -S stress-ng")
         return 1
     v = Ventana()
