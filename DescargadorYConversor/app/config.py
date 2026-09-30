@@ -25,6 +25,11 @@ if not RUTA_ICONO.exists():
 # Emblema para la barra lateral y la cabecera (variante clara sobre fondo oscuro).
 RUTA_LOGO_CLARO = _ASSETS / "logo_claro.png"
 
+try:
+    VERSION = (RAIZ_PROYECTO / "VERSION").read_text(encoding="utf-8").strip()
+except OSError:
+    VERSION = "?"
+
 RUTA_TEMA = RAIZ_PROYECTO / "app" / "resources" / "theme.qss"
 
 # Se puede redirigir con DESCARGADOR_CONFIG_DIR (útil para pruebas).

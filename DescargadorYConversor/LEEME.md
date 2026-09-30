@@ -51,7 +51,7 @@ Si mueves la carpeta del proyecto, vuelve a ejecutar ese script.
 |---|---|
 | **Dashboard** | Contadores (descargas, conversiones, solo audio, errores), acciones rápidas, estado de FFmpeg/yt-dlp y actividad reciente. |
 | **Descargar vídeos** | Pega una o varias URLs (una por línea), elige calidad o «solo audio (MP3)», carpeta destino, y descarga con miniatura y barra de progreso. |
-| **Convertir archivos** | Añade uno o varios archivos y elige tipo: **Vídeo** (MP4, MKV, WebM, AVI, MOV, GIF), **Audio** (MP3, M4A, WAV, FLAC, OGG) o **Imagen** (JPEG, PNG, WebP, TIFF, BMP), con opción de redimensionar. Las imágenes admiten **RAW de cámara**: CR2/CR3 (Canon), NEF (Nikon), ARW (Sony), RAF (Fujifilm), RW2 (Panasonic), ORF (Olympus/OM System) y más, vía `rawpy`/LibRaw. |
+| **Convertir archivos** | Añade uno o varios archivos y elige tipo: **Vídeo** (MP4, MKV, WebM, AVI, MOV, GIF y **DNxHR para DaVinci**), **Audio** (MP3, M4A, WAV, FLAC, OGG) o **Imagen** (JPEG, PNG, WebP, TIFF, BMP), con opción de redimensionar. Ajuste rápido **Para DaVinci**: DaVinci Resolve gratuito en Linux no abre H.264/H.265 ni audio AAC (vídeos de celular en negro); los deja en DNxHR 1080p + PCM (.mov) con frame rate constante (~65 GB por hora). Las imágenes admiten **RAW de cámara**: CR2/CR3 (Canon), NEF (Nikon), ARW (Sony), RAF (Fujifilm), RW2 (Panasonic), ORF (Olympus/OM System) y más, vía `rawpy`/LibRaw. |
 | **Historial** | Tabla con todas las descargas y conversiones; doble clic abre la carpeta. |
 | **Configuración** | Carpetas por defecto, calidad por defecto, ruta manual de FFmpeg. |
 

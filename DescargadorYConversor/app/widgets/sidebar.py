@@ -73,7 +73,7 @@ class Sidebar(QFrame):
         self.botones[0].setChecked(True)
         layout.addStretch()
 
-        pie = QLabel("Hecho con IA y Genaro Velasco")
+        pie = QLabel(f"v{config.VERSION}  ·  Hecho con IA y Genaro Velasco")
         pie.setAlignment(Qt.AlignCenter)
         pie.setStyleSheet("color:#5b6b82;font-size:9px;letter-spacing:0.3px;")
         layout.addWidget(pie)

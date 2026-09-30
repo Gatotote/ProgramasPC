@@ -154,7 +154,7 @@ class ConvertirPage(QWidget):
         fila_tipo.addSpacing(16)
         fila_tipo.addWidget(QLabel("Formato:"))
         self.combo_formato = QComboBox()
-        self.combo_formato.setFixedWidth(260)
+        self.combo_formato.setFixedWidth(320)
         fila_tipo.addWidget(self.combo_formato)
         fila_tipo.addStretch()
         salida.layout_panel.addLayout(fila_tipo)
@@ -172,8 +172,18 @@ class ConvertirPage(QWidget):
             "y para el reconocimiento facial de Centro de Control."
         )
         self.btn_preset_exp.clicked.connect(self._preset_expediente)
+        self.btn_preset_davinci = QPushButton("Para DaVinci")
+        self.btn_preset_davinci.setObjectName("ghost")
+        self.btn_preset_davinci.setToolTip(
+            "Deja los vídeos de celular listos para DaVinci Resolve gratuito\n"
+            "(que no abre H.264/H.265 ni audio AAC): DNxHR 1080p + audio PCM\n"
+            "en .mov, con frame rate constante para que el audio no se desfase.\n"
+            "Ocupa mucho: ~65 GB por hora de vídeo."
+        )
+        self.btn_preset_davinci.clicked.connect(self._preset_davinci)
         fila_preset.addWidget(lbl_preset)
         fila_preset.addWidget(self.btn_preset_exp)
+        fila_preset.addWidget(self.btn_preset_davinci)
         fila_preset.addStretch()
         salida.layout_panel.addLayout(fila_preset)
 
@@ -306,6 +316,15 @@ class ConvertirPage(QWidget):
         self.lbl_sub.setText(
             f"Ajuste para expediente: {p['formato']} · {p['tamano']} máx."
         )
+
+    def _preset_davinci(self):
+        """Configura salida = DNxHR 1080p + PCM (.mov), que DaVinci Resolve
+        gratuito sí abre en Linux."""
+        self.combo_tipo.setCurrentText("Vídeo")  # dispara _recargar_formatos
+        i = self.combo_formato.findText(conversion.PRESET_DAVINCI)
+        if i >= 0:
+            self.combo_formato.setCurrentIndex(i)
+        self.lbl_sub.setText("Ajuste para DaVinci: DNxHR 1080p + audio PCM (.mov).")
 
     # -- conversión -----------------------------------------------------
 

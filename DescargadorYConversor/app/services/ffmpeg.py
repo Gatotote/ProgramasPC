@@ -102,6 +102,23 @@ def duracion_segundos(ruta):
         return None
 
 
+def fps_promedio(ruta):
+    """Frame rate promedio del primer stream de vídeo (float) o None."""
+    fp = ruta_ffprobe()
+    if not fp:
+        return None
+    try:
+        salida = subprocess.run(
+            [fp, "-v", "quiet", "-select_streams", "v:0", "-show_entries", "stream=avg_frame_rate",
+             "-of", "default=nokey=1:noprint_wrappers=1", ruta],
+            capture_output=True, text=True, timeout=20, creationflags=_NO_WINDOW,
+        ).stdout.strip()
+        num, _, den = salida.partition("/")
+        return float(num) / float(den or 1) or None
+    except Exception:
+        return None
+
+
 def popen(args):
     """Lanza ffmpeg leyendo su progreso por stderr, línea a línea."""
     return subprocess.Popen(

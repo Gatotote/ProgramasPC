@@ -15,7 +15,21 @@ VIDEO = {
     "AVI (MPEG-4)":       {"ext": "avi",  "args": ["-c:v", "mpeg4", "-qscale:v", "4", "-c:a", "libmp3lame", "-q:a", "3"]},
     "MOV (H.264 + AAC)":  {"ext": "mov",  "args": ["-c:v", "libx264", "-preset", "medium", "-crf", "21", "-c:a", "aac", "-b:a", "192k"]},
     "GIF animado":        {"ext": "gif",  "args": ["-vf", "fps=12,scale=480:-1:flags=lanczos", "-an"]},
+    # DaVinci Resolve gratuito en Linux no lee H.264/H.265 ni audio AAC (los
+    # .mp4 de celular se ven en negro). DNxHR + PCM en .mov sí lo abre.
+    # "davinci": frame rate constante (ver _args_fps) y decodificación por GPU.
+    "DaVinci · DNxHR 1080p (para editar)": {"ext": "mov", "davinci": True, "args": [
+        "-vf", "scale='if(gt(iw,ih),-2,min(1080,iw))':'if(gt(iw,ih),min(1080,ih),-2)':flags=lanczos,format=yuv422p",
+        "-c:v", "dnxhd", "-profile:v", "dnxhr_sq", "-c:a", "pcm_s16le", "-ar", "48000"]},
+    "DaVinci · DNxHR resolución original (pesado)": {"ext": "mov", "davinci": True, "args": [
+        "-vf", "format=yuv422p",
+        "-c:v", "dnxhd", "-profile:v", "dnxhr_hq", "-c:a", "pcm_s16le", "-ar", "48000"]},
 }
+
+PRESET_DAVINCI = "DaVinci · DNxHR 1080p (para editar)"
+
+# Frame rates estándar; si el vídeo ya va a uno de estos se respeta tal cual.
+_FPS_ESTANDAR = (23.976, 24, 25, 29.97, 30, 50, 59.94, 60)
 AUDIO = {
     "MP3 (192 kbps)":  {"ext": "mp3",  "args": ["-vn", "-c:a", "libmp3lame", "-b:a", "192k"]},
     "MP3 (320 kbps)":  {"ext": "mp3",  "args": ["-vn", "-c:a", "libmp3lame", "-b:a", "320k"]},
@@ -38,6 +52,18 @@ _TIEMPO_RE = re.compile(r"time=(\d+):(\d+):(\d+(?:\.\d+)?)")
 
 def preset_por_nombre(nombre):
     return VIDEO.get(nombre) or AUDIO.get(nombre)
+
+
+def _args_fps(entrada):
+    """Frame rate constante para DaVinci. Los celulares graban con frame rate
+    variable y DaVinci desfasa el audio; se fija a 30 o 60 según el promedio."""
+    fps = ffmpeg.fps_promedio(entrada)
+    if not fps:
+        return []
+    cercano = min(_FPS_ESTANDAR, key=lambda e: abs(fps - e))
+    if abs(fps - cercano) / cercano < 0.01:
+        return ["-fps_mode", "cfr", "-r", str(cercano)]
+    return ["-fps_mode", "cfr", "-r", "30" if fps <= 35 else "60"]
 
 
 def es_salida_audio(nombre):
@@ -98,7 +124,11 @@ class ConversionWorker(QThread):
             self.progreso.emit(0, "Analizando…")
             dur = ffmpeg.duracion_segundos(entrada) or 0
             salida = ruta_salida(entrada, self.carpeta_destino, preset)
-            cmd = [ff, "-y", "-i", entrada, *preset["args"], "-progress", "pipe:2", salida]
+            if preset.get("davinci"):
+                cmd = [ff, "-y", "-hwaccel", "auto", "-i", entrada, *preset["args"],
+                       *_args_fps(entrada), "-progress", "pipe:2", salida]
+            else:
+                cmd = [ff, "-y", "-i", entrada, *preset["args"], "-progress", "pipe:2", salida]
 
             try:
                 self._proc = ffmpeg.popen(cmd)
