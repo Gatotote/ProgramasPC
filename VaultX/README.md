@@ -1,4 +1,4 @@
-# BóvedaFacial · «Bóveda Inteligente»
+# VaultX (antes BóvedaFacial · «Bóveda Inteligente»)
 
 Bóveda de carpetas **cifrada** con desbloqueo por **reconocimiento facial**
 (InsightFace / ArcFace, pack `antelopev2`) **+ PIN**. El contenido queda

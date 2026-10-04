@@ -1,4 +1,4 @@
-"""Tema de la GUI: paleta latón + acero de la maqueta «Bóveda Inteligente»,
+"""Tema de la GUI: paleta latón + acero de la maqueta «VaultX»,
 en claro y oscuro. Se aplica como hoja de estilo Qt (QSS) global.
 """
 

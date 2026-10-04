@@ -1,4 +1,4 @@
-"""Interfaz PySide6 «Bóveda Inteligente».
+"""Interfaz PySide6 «VaultX».
 
 Pieza 1 (hecha): tema, asistente de primer arranque, ventana de desbloqueo
 (PIN + rostro con vista previa), enrolado.

@@ -53,7 +53,7 @@ def test_install_desktop_entry(home):
     path = di.install_desktop_entry()
     assert path.exists()
     txt = path.read_text()
-    assert "Name=Bóveda Inteligente" in txt
+    assert "Name=VaultX" in txt
     assert txt.count("Exec=") == 1
     icon = home / ".local" / "share" / "icons" / "hicolor" / "scalable" / "apps" / "bovedafacial.svg"
     assert icon.exists()

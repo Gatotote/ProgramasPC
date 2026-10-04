@@ -27,7 +27,7 @@ def run_busy(parent, text: str, fn):
     relanza su excepción."""
     worker = _OpWorker(fn)
     dlg = QProgressDialog(text, None, 0, 0, parent)
-    dlg.setWindowTitle("Bóveda Inteligente")
+    dlg.setWindowTitle("VaultX")
     dlg.setCancelButton(None)
     dlg.setWindowModality(Qt.WindowModality.WindowModal)
     dlg.setMinimumDuration(0)

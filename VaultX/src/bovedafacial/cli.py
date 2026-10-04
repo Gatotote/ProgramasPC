@@ -371,7 +371,7 @@ def exclude_from_index(vault: Path) -> None:
 @main.command("install-desktop")
 @click.option("--on-desktop", is_flag=True, help="Poner también un icono en el Escritorio.")
 def install_desktop(on_desktop: bool) -> None:
-    """Instala el lanzador «Bóveda Inteligente» (menú de KDE)."""
+    """Instala el lanzador «VaultX» (menú de KDE)."""
     from .desktop_integration import install_desktop_entry, place_on_desktop
 
     path = install_desktop_entry()

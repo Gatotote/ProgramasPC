@@ -30,7 +30,7 @@ from .widgets import hline
 class SetupWizard(QDialog):
     def __init__(self, default_path: Path, parent=None) -> None:
         super().__init__(parent)
-        self.setWindowTitle("Configurar la Bóveda Inteligente")
+        self.setWindowTitle("Configurar VaultX")
         self.setModal(True)
         self.resize(560, 560)
 
@@ -67,7 +67,7 @@ class SetupWizard(QDialog):
         w = QWidget()
         v = QVBoxLayout(w)
         v.setSpacing(12)
-        t = QLabel("Bóveda Inteligente")
+        t = QLabel("VaultX")
         t.setProperty("role", "h1")
         v.addWidget(t)
         v.addWidget(_p("Una caja fuerte cifrada para tus documentos, contraseñas, "

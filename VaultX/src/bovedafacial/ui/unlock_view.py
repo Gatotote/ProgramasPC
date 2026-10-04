@@ -69,7 +69,7 @@ class UnlockWindow(QWidget):
     def __init__(self, vault_path: Path, parent=None) -> None:
         super().__init__(parent)
         self.vault_path = Path(vault_path)
-        self.setWindowTitle("Bóveda Inteligente")
+        self.setWindowTitle("VaultX")
         self.resize(720, 480)
         self._worker: _UnlockWorker | None = None
         self._recovery = False
@@ -83,7 +83,7 @@ class UnlockWindow(QWidget):
         left.addWidget(self.video, 1)
 
         # --- derecha: acceso ---
-        title = QLabel("Bóveda Inteligente")
+        title = QLabel("VaultX")
         title.setProperty("role", "h1")
         self.sub = QLabel(str(self.vault_path))
         self.sub.setProperty("role", "dim")

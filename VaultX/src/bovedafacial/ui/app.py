@@ -56,7 +56,7 @@ def _demo() -> int:
     from ..vault import create_vault, open_vault
 
     app = QApplication(sys.argv)
-    app.setApplicationDisplayName("Bóveda Inteligente (demo)")
+    app.setApplicationDisplayName("VaultX (demo)")
     _initial_theme(app)
     d = Path(tempfile.mkdtemp(prefix="boveda-demo-"))
     kdf = {"type": "argon2id", "time_cost": 1, "memory_cost": 8192, "parallelism": 1}
@@ -93,8 +93,8 @@ def main() -> int:
     vault_override = Path(args[args.index("--vault") + 1]) if "--vault" in args else None
 
     app = QApplication(sys.argv)
-    app.setApplicationName("Bóveda Inteligente")
-    app.setApplicationDisplayName("Bóveda Inteligente")
+    app.setApplicationName("VaultX")
+    app.setApplicationDisplayName("VaultX")
     _initial_theme(app)
 
     vault_path = vault_override or config.vault_path()

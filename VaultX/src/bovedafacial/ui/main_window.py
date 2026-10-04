@@ -3,6 +3,8 @@ elementos + botón «Agregar» + bloqueo automático por inactividad."""
 
 from __future__ import annotations
 
+from .. import __version__
+
 from PySide6.QtCore import QEvent, Qt, QTimer, Signal
 from PySide6.QtWidgets import (
     QApplication,
@@ -46,7 +48,7 @@ class MainWindow(QWidget):
     def __init__(self, session, parent=None) -> None:
         super().__init__(parent)
         self.session = session
-        self.setWindowTitle("Bóveda Inteligente")
+        self.setWindowTitle("VaultX")
         self.resize(1040, 680)
 
         # --- barra lateral ---
@@ -62,11 +64,15 @@ class MainWindow(QWidget):
         rail_col = QVBoxLayout()
         rail_col.setContentsMargins(0, 0, 0, 0)
         rail_col.setSpacing(8)
-        brand = QLabel("🔐  Bóveda\nInteligente")
+        brand = QLabel("🔐  VaultX")
         brand.setStyleSheet("color:#e7e3d6;font-size:16px;font-weight:600;padding:12px;")
         rail_col.addWidget(brand)
         rail_col.addWidget(self.rail, 1)
         rail_col.addWidget(lock_btn)
+        credit = QLabel(f"Este programa fue realizado por Genaro Velasco\nversión {__version__}")
+        credit.setWordWrap(True)
+        credit.setStyleSheet("color:#9a968a;font-size:11px;padding:4px 12px 10px;")
+        rail_col.addWidget(credit)
         rail_wrap = QWidget()
         rail_wrap.setStyleSheet("background:transparent;")
         rail_wrap.setLayout(rail_col)

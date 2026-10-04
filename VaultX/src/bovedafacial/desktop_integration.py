@@ -2,7 +2,7 @@
 
 - `exclude_from_baloo()`: saca el `.vault` del indexador de archivos de KDE para
   que no aparezca en Dolphin / KRunner / la búsqueda del sistema.
-- `install_desktop_entry()`: instala el lanzador «Bóveda Inteligente» y su icono
+- `install_desktop_entry()`: instala el lanzador «VaultX» y su icono
   en ~/.local/share, para abrirla desde el menú de KDE.
 
 Todo es best-effort: si no hay KDE o falta una herramienta, se informa y ya.
@@ -135,7 +135,7 @@ def install_desktop_entry() -> Path:
     entry = (
         "[Desktop Entry]\n"
         "Type=Application\n"
-        "Name=Bóveda Inteligente\n"
+        "Name=VaultX\n"
         "GenericName=Caja fuerte cifrada\n"
         "Comment=Documentos, contraseñas y finanzas con desbloqueo por rostro y PIN\n"
         f"Exec={_gui_executable()}\n"
