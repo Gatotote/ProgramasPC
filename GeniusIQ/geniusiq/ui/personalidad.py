@@ -303,7 +303,7 @@ class PantallaPerfil(QWidget):
         fecha_txt = datetime.fromisoformat(fecha).strftime("%d/%m/%Y %H:%M")
         salud = res.get("tipo") == "salud"
         lay.addWidget(_etiqueta(f"{'Resultado' if salud else 'Perfil'} de {persona}", "titulo"))
-        lay.addWidget(_etiqueta(f"{res['nombre_bateria']}  ·  {fecha_txt}  ·  edad {res['edad']:.0f} años", "suave"))
+        lay.addWidget(_etiqueta(f"{res['nombre_bateria']}  ·  {fecha_txt}  ·  edad {int(res['edad'])} años", "suave"))
         if salud:
             self._tamizaje(res, lay)
         else:

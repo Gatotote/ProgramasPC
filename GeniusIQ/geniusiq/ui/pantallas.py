@@ -466,7 +466,7 @@ class PantallaResultados(QWidget):
         lay.setSpacing(12)
         fecha_txt = datetime.fromisoformat(fecha).strftime("%d/%m/%Y %H:%M")
         lay.addWidget(_etiqueta(f"Resultados de {persona}", "titulo"))
-        lay.addWidget(_etiqueta(f"{res['nombre_bateria']}  ·  {fecha_txt}  ·  edad {res['edad']:.0f} años", "suave"))
+        lay.addWidget(_etiqueta(f"{res['nombre_bateria']}  ·  {fecha_txt}  ·  edad {int(res['edad'])} años", "suave"))
 
         total = res.get("total")
         if total:
@@ -504,6 +504,8 @@ class PantallaResultados(QWidget):
         tabla.setHorizontalHeaderLabels(["Subprueba", "Puntuación (1–19, media 10)", "Detalle"])
         tabla.verticalHeader().hide()
         tabla.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
+        tabla.setSelectionMode(QTableWidget.SelectionMode.NoSelection)
+        tabla.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         tabla.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         for i, s in enumerate(res["subpruebas"]):
             for j, v in enumerate([s["nombre"], str(s["escalar"]), s["detalle"]]):
@@ -517,7 +519,10 @@ class PantallaResultados(QWidget):
         self.scroll.setWidget(cont)
 
     def _pdf(self) -> None:
-        ruta, _ = QFileDialog.getSaveFileName(self, "Guardar PDF", f"{self.nombre_archivo}.pdf", "PDF (*.pdf)")
+        carpeta = Path.home() / "Documentos" / "GeniusIQ"
+        carpeta.mkdir(parents=True, exist_ok=True)
+        ruta, _ = QFileDialog.getSaveFileName(self, "Guardar PDF", str(carpeta / f"{self.nombre_archivo}.pdf"),
+                                              "PDF (*.pdf)")
         if not ruta:
             return
         cont = self.scroll.widget()
