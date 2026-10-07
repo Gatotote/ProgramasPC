@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=GeniusIQ
+Comment=Estimación casera del cociente intelectual (no clínica)
+Exec=/home/gatotote/Proyectos/ProgramasPC/GeniusIQ/ejecutar.sh
+Icon=/home/gatotote/Proyectos/ProgramasPC/GeniusIQ/geniusiq/icono.png
+Terminal=false
+Categories=Education;
+StartupWMClass=geniusiq

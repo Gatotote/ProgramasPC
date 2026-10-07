@@ -1,0 +1,8 @@
+[project]
+name = "geniusiq"
+version = "0.3.0"
+description = "Estimación casera (no clínica) del cociente intelectual"
+requires-python = ">=3.13"
+dependencies = [
+    "pyside6>=6.11.2",
+]
