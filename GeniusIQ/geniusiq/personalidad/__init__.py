@@ -24,6 +24,8 @@ class Cuestionario:
     opciones: list[str] = field(default_factory=lambda: list(ESCALA_LIKERT))   # botones de respuesta (2–5)
     opciones_item: dict[int, list[str]] = field(default_factory=dict)   # índice → opciones propias de esa pregunta
     categoria: str = "personalidad"   # "personalidad" | "salud"
+    edad_max: int = 120
+    informante: bool = False   # lo contesta otra persona (papá, mamá, maestro) sobre quien se elige
 
     def opciones_de(self, i: int) -> list[str]:
         return self.opciones_item.get(i, self.opciones)

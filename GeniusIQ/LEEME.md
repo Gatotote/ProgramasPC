@@ -52,7 +52,8 @@ resultado. Los percentiles del Big Five y del HEXACO usan promedios aproximados 
 |---|---|---|---|
 | PHQ-9 (depresión) | 9 | 5/10/15/20; positivo ≥10; pregunta 9 > 0 → aviso de crisis | 12+ |
 | GAD-7 (ansiedad) | 7 | 5/10/15; positivo ≥10 | 12+ |
-| ASRS v1.1 parte A (TDAH adultos) | 6 | 4+ respuestas en zona sombreada | 18+ |
+| ASRS v1.1 completo (TDAH adultos, desde v0.4.0) | 18 | Parte A: 4+ de 6 en zona sombreada; parte B: perfil desatención / hiperactividad (síntomas en zona, de 9 cada uno) | 18+ |
+| SNAP-IV-26 (TDAH niños, desde v0.4.0) | 1 + 26 | Lo contesta papá/mamá o maestro (primera pregunta). Promedio por grupo vs corte de Swanson según informante (padres D 1.78, H 1.44, O 1.88, total 1.67; maestro 2.56, 1.78, 1.38, 2.00) | 6–17 |
 | AUDIT (alcohol) | 10 | Zonas 8/16/20; aviso si 4–6 suman ≥4 | 18+ |
 | PCL-5 (estrés postraumático) | 20 | ≥33 + patrón de grupos DSM-5 (B1, C1, D2, E2) | 18+ |
 

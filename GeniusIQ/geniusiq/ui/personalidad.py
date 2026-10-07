@@ -166,15 +166,16 @@ class PantallaCuestionario(QWidget):
 class Barras(QWidget):
     """Barras horizontales 0–100. filas = [(nombre, valor, texto_derecha)]."""
 
-    def __init__(self, filas: list[tuple], alto_fila: int = 34, ancho_nombre: int = 230, marca: float | None = None):
+    def __init__(self, filas: list[tuple], alto_fila: int = 34, ancho_nombre: int = 230, marca: float | None = None,
+                 ancho_texto: int = 110):
         super().__init__()
-        self.filas, self.alto, self.izq, self.marca = filas, alto_fila, ancho_nombre, marca
+        self.filas, self.alto, self.izq, self.marca, self.ancho_texto = filas, alto_fila, ancho_nombre, marca, ancho_texto
         self.setMinimumHeight(alto_fila * len(filas) + 8)
 
     def paintEvent(self, _):
         p = QPainter(self)
         p.setRenderHint(QPainter.RenderHint.Antialiasing)
-        der = self.width() - 120
+        der = self.width() - self.ancho_texto - 10
         f = QFont()
         f.setPixelSize(14)
         for i, (nombre, valor, texto) in enumerate(self.filas):
@@ -195,7 +196,7 @@ class Barras(QWidget):
                 p.setPen(QPen(QColor(SUAVE), 1, Qt.PenStyle.DashLine))
                 p.drawLine(QPointF(x, y + 2), QPointF(x, y + self.alto - 10))
             p.setPen(QColor(ACENTO_CLARO))
-            p.drawText(QRectF(der + 10, y, 110, self.alto - 8),
+            p.drawText(QRectF(der + 10, y, self.ancho_texto, self.alto - 8),
                        Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter, texto)
 
 
@@ -445,6 +446,9 @@ class PantallaPerfil(QWidget):
         if res["subescalas"]:
             tarjeta, t = _tarjeta()
             t.addWidget(_etiqueta("Por grupos de síntomas", "subtitulo"))
-            t.addWidget(Barras([(x["nombre"], 100 * x["puntos"] / x["maximo"], f"{x['puntos']} de {x['maximo']}")
-                                for x in res["subescalas"]], 32, 300))
+            t.addWidget(Barras([(x["nombre"], 100 * x["puntos"] / x["maximo"],
+                                 x.get("texto", f"{x['puntos']} de {x['maximo']}")) for x in res["subescalas"]],
+                               32, 300, ancho_texto=210 if any("texto" in x for x in res["subescalas"]) else 110))
+            for n in res.get("notas", []):
+                t.addWidget(_etiqueta(n))
             lay.addWidget(tarjeta)

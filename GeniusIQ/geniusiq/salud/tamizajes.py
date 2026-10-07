@@ -1,8 +1,9 @@
-"""Los cinco tamizajes y su calificación oficial.
+"""Los tamizajes y su calificación oficial.
 
 Todos se pueden usar sin pagar ni pedir permiso para uso clínico o personal:
 - PHQ-9 y GAD-7 (Spitzer, Kroenke, Williams y Löwe; Pfizer los liberó al dominio público).
-- ASRS v1.1, parte A (Organización Mundial de la Salud y Kessler; uso libre).
+- ASRS v1.1, 18 preguntas (Organización Mundial de la Salud y Kessler; uso libre).
+- SNAP-IV-26 (Swanson, Nolan y Pelham; se distribuye libremente).
 - AUDIT (Organización Mundial de la Salud, 2001; uso libre).
 - PCL-5 (National Center for PTSD de EE. UU.; dominio público).
 Traducción propia al español de México. Las respuestas llegan como 1 = primera opción.
@@ -33,7 +34,7 @@ def _resultado(total: int, maximo: int, cortes: list[tuple], corte_positivo: int
             "cortes": [{"desde": d, "nivel": n} for d, n, _ in cortes],
             "recomendacion": recomendacion if positivo else
             "Por ahora no sale una señal de alerta. Si algo te sigue preocupando, coméntalo con tu médico.",
-            "subescalas": [], "alertas": [], "urgente": False,
+            "subescalas": [], "alertas": [], "notas": [], "urgente": False,
             "resumen": f"{nombre_corto} {total}/{maximo} · {nivel}", **extra}
 
 
@@ -114,43 +115,189 @@ GAD7 = Cuestionario(
     opciones=FRECUENCIA_2SEM, categoria="salud")
 
 
-# ------------------------------------------------------------------ ASRS v1.1 parte A (TDAH en adultos)
+# ------------------------------------------------------------------ ASRS v1.1 completo (TDAH en adultos)
 
+# (pregunta, grupo D = desatención / H = hiperactividad-impulsividad, desde qué respuesta cuenta: 3 =
+# «Algunas veces», 4 = «Con frecuencia»; son las casillas sombreadas del formato oficial)
 ASRS_PREGUNTAS = [
-    "¿Con qué frecuencia te cuesta terminar los detalles finales de un proyecto, una vez que ya hiciste las "
-    "partes difíciles?",
-    "¿Con qué frecuencia te cuesta poner las cosas en orden cuando haces una tarea que requiere organización?",
-    "¿Con qué frecuencia tienes problemas para acordarte de citas u obligaciones?",
-    "Cuando tienes una tarea que requiere pensar mucho, ¿con qué frecuencia evitas empezarla o la retrasas?",
-    "¿Con qué frecuencia mueves o retuerces las manos o los pies cuando tienes que estar sentado(a) mucho "
-    "tiempo?",
-    "¿Con qué frecuencia te sientes demasiado activo(a) y con necesidad de hacer cosas, como si tuvieras un "
-    "motor por dentro?",
+    # parte A: las 6 que mejor predicen el diagnóstico
+    ("¿Con qué frecuencia te cuesta terminar los detalles finales de un proyecto, una vez que ya hiciste "
+     "las partes difíciles?", "D", 3),
+    ("¿Con qué frecuencia te cuesta poner las cosas en orden cuando haces una tarea que requiere "
+     "organización?", "D", 3),
+    ("¿Con qué frecuencia tienes problemas para acordarte de citas u obligaciones?", "D", 3),
+    ("Cuando tienes una tarea que requiere pensar mucho, ¿con qué frecuencia evitas empezarla o la "
+     "retrasas?", "D", 4),
+    ("¿Con qué frecuencia mueves o retuerces las manos o los pies cuando tienes que estar sentado(a) mucho "
+     "tiempo?", "H", 4),
+    ("¿Con qué frecuencia te sientes demasiado activo(a) y con necesidad de hacer cosas, como si tuvieras "
+     "un motor por dentro?", "H", 4),
+    # parte B
+    ("¿Con qué frecuencia cometes errores por descuido cuando trabajas en algo aburrido o difícil?", "D", 4),
+    ("¿Con qué frecuencia te cuesta mantener la atención cuando haces un trabajo aburrido o repetitivo?",
+     "D", 4),
+    ("¿Con qué frecuencia te cuesta concentrarte en lo que te dicen, aun cuando te hablan directamente?",
+     "D", 3),
+    ("¿Con qué frecuencia pierdes cosas o te cuesta encontrarlas en la casa o en el trabajo?", "D", 4),
+    ("¿Con qué frecuencia te distraen la actividad o el ruido a tu alrededor?", "D", 4),
+    ("¿Con qué frecuencia te levantas de tu lugar en juntas u otras situaciones en las que se espera que "
+     "sigas sentado(a)?", "H", 3),
+    ("¿Con qué frecuencia te sientes intranquilo(a) o inquieto(a)?", "H", 4),
+    ("¿Con qué frecuencia te cuesta calmarte y relajarte cuando tienes tiempo para ti?", "H", 4),
+    ("¿Con qué frecuencia hablas de más en reuniones con otras personas?", "H", 4),
+    ("Cuando platicas con alguien, ¿con qué frecuencia terminas sus frases antes de que lo haga la otra "
+     "persona?", "H", 3),
+    ("¿Con qué frecuencia te cuesta esperar tu turno en situaciones en las que hay que hacerlo?", "H", 4),
+    ("¿Con qué frecuencia interrumpes a otros cuando están ocupados?", "H", 3),
 ]
 
 
 def _asrs(respuestas: list[int], edad: float) -> dict:
-    # cuenta como señal: preguntas 1–3 desde «Algunas veces», 4–6 desde «Con frecuencia» (casillas sombreadas)
-    senales = sum(1 for i, r in enumerate(respuestas) if r >= (3 if i < 3 else 4))
+    zona = [r >= desde for r, (_, _, desde) in zip(respuestas, ASRS_PREGUNTAS)]
+    senales = sum(zona[:6])
     res = _resultado(senales, 6, [
-        (0, "Sin señal", "Pocas señales de TDAH en adultos."),
+        (0, "Sin señal", "Pocas señales de TDAH en adultos en las 6 preguntas de detección."),
         (4, "Señal positiva", "El patrón de respuestas es compatible con TDAH en adultos."),
     ], 4, "Conviene una evaluación con un psiquiatra o neuropsicólogo. El TDAH en adultos es frecuente, a "
-          "menudo no se detectó en la infancia y tiene tratamiento.", "ASRS",
-        puntaje_frecuencia=sum(r - 1 for r in respuestas))
+          "menudo no se detectó en la infancia y tiene tratamiento.", "ASRS")
     res["resumen"] = f"ASRS {senales}/6 señales · {res['nivel']}"
-    res["explicacion_total"] = ("Se cuentan las respuestas que caen en la zona de alerta (preguntas 1–3 desde "
-                                "«Algunas veces»; 4–6 desde «Con frecuencia»). 4 o más = señal positiva.")
+    res["explicacion_total"] = ("El resultado oficial sale de la parte A (preguntas 1–6): se cuentan las "
+                                "respuestas en zona de alerta. 4 o más = señal positiva.")
+    sintomas = {}
+    for g, nombre in (("D", "Desatención"), ("H", "Hiperactividad / impulsividad")):
+        idx = [i for i, (_, gi, _) in enumerate(ASRS_PREGUNTAS) if gi == g]
+        sintomas[g] = sum(zona[i] for i in idx)
+        res["subescalas"].append({"nombre": nombre, "puntos": sum(respuestas[i] - 1 for i in idx),
+                                  "maximo": 4 * len(idx)})
+    d, h = sintomas["D"], sintomas["H"]
+    presentacion = ("combinada" if d >= 5 and h >= 5 else "predominantemente con desatención" if d >= 5 else
+                    "predominantemente hiperactiva/impulsiva" if h >= 5 else "")
+    res["notas"] = [f"Síntomas en zona de alerta (las 18 preguntas): desatención {d} de 9, hiperactividad/"
+                    f"impulsividad {h} de 9.",
+                    "Como referencia, en adultos el DSM-5 pide 5 o más síntomas en un grupo, que hayan empezado "
+                    "antes de los 12 años y que estorben en dos o más ámbitos (casa, trabajo, escuela, pareja). "
+                    "Eso solo lo puede confirmar un profesional."]
+    if presentacion:
+        res["notas"].append(f"El número de síntomas se parece a la presentación {presentacion}.")
+    res["sintomas"] = sintomas
     return res
 
 
 ASRS = Cuestionario(
     "asrs", "ASRS (TDAH en adultos)",
-    "Las 6 preguntas de detección de la Escala de Autoinforme de TDAH en Adultos de la OMS (ASRS v1.1, "
-    "parte A). Detecta desatención e hiperactividad de los últimos 6 meses. 2 minutos.",
-    "likert", ASRS_PREGUNTAS, _asrs, edad_min=18, minutos=2,
+    "Escala de Autoinforme de TDAH en Adultos de la OMS (ASRS v1.1) completa: las 18 preguntas siguen los "
+    "18 síntomas del DSM. La parte A (6 preguntas) da el resultado de detección; la parte B completa el "
+    "perfil de desatención e hiperactividad/impulsividad. 5 minutos.",
+    "likert", [p for p, _, _ in ASRS_PREGUNTAS], _asrs, edad_min=18, minutos=5,
     aviso="Piensa en los últimos 6 meses, en el trabajo, la escuela o la casa.",
     opciones=FRECUENCIA_ASRS, categoria="salud")
+
+
+# ------------------------------------------------------------------ SNAP-IV (TDAH en niños y adolescentes)
+
+SNAP_INFORMANTE = ["Papá, mamá o tutor", "Maestro(a)"]
+SNAP_ESCALA = ["Nada", "Un poco", "Bastante", "Mucho"]
+
+SNAP_PREGUNTAS = [
+    # desatención (1–9)
+    "A menudo no pone atención a los detalles o comete errores por descuido en sus tareas o trabajos.",
+    "A menudo le cuesta mantener la atención en tareas o juegos.",
+    "A menudo parece no escuchar cuando se le habla directamente.",
+    "A menudo no sigue las instrucciones y no termina las tareas de la escuela, los encargos o sus "
+    "obligaciones.",
+    "A menudo le cuesta organizar tareas y actividades.",
+    "A menudo evita, le disgustan o hace de mala gana las tareas que requieren esfuerzo mental sostenido.",
+    "A menudo pierde cosas que necesita (juguetes, tareas, lápices, libros…).",
+    "A menudo se distrae con cualquier cosa a su alrededor.",
+    "A menudo es olvidadizo(a) en las actividades diarias.",
+    # hiperactividad / impulsividad (10–18)
+    "A menudo mueve las manos o los pies, o se retuerce en el asiento.",
+    "A menudo se levanta de su lugar en el salón o en otras situaciones en que debe quedarse sentado(a).",
+    "A menudo corre o se trepa en exceso en situaciones en que no es apropiado.",
+    "A menudo le cuesta jugar o hacer actividades de tiempo libre en silencio.",
+    "A menudo está «en movimiento» o actúa como si tuviera «un motor».",
+    "A menudo habla en exceso.",
+    "A menudo suelta las respuestas antes de que terminen de hacerle la pregunta.",
+    "A menudo le cuesta esperar su turno.",
+    "A menudo interrumpe o se mete en lo que hacen otros (conversaciones, juegos).",
+    # oposicionismo (19–26)
+    "A menudo pierde los estribos.",
+    "A menudo discute con los adultos.",
+    "A menudo desafía o se niega a cumplir lo que piden los adultos o las reglas.",
+    "A menudo hace cosas a propósito para molestar a los demás.",
+    "A menudo culpa a otros de sus errores o de su mal comportamiento.",
+    "A menudo es susceptible o se molesta fácilmente con los demás.",
+    "A menudo está enojado(a) o resentido(a).",
+    "A menudo es rencoroso(a) o vengativo(a).",
+]
+
+# Puntos de corte del promedio por grupo (Swanson; ~5 % más alto de la población), según quién contesta
+SNAP_CORTES = {
+    "padres": {"D": 1.78, "H": 1.44, "O": 1.88, "TDAH": 1.67},
+    "maestro": {"D": 2.56, "H": 1.78, "O": 1.38, "TDAH": 2.00},
+}
+_SNAP_GRUPOS = [("D", "Desatención (1–9)", 0, 9), ("H", "Hiperactividad / impulsividad (10–18)", 9, 18),
+                ("O", "Oposicionismo (19–26)", 18, 26)]
+
+
+def _snap(respuestas: list[int], edad: float) -> dict:
+    quien = "maestro" if respuestas[0] == 2 else "padres"
+    v = [r - 1 for r in respuestas[1:]]          # 0–3
+    cortes = SNAP_CORTES[quien]
+    suma_tdah = sum(v[:18])
+    corte_tdah = round(cortes["TDAH"] * 18)
+    res = _resultado(suma_tdah, 54, [
+        (0, "Por debajo del corte", "Los síntomas de TDAH no destacan frente a lo típico de su edad."),
+        (corte_tdah, "Arriba del corte", "Los síntomas de TDAH están en el 5 % más alto: conviene evaluarlo."),
+    ], corte_tdah, "Conviene una evaluación con un paidopsiquiatra, neuropediatra o psicólogo infantil. "
+                   "Ayuda mucho que también lo conteste un maestro (o los papás, si lo contestó el maestro): "
+                   "el TDAH se nota en más de un lugar.", "SNAP-IV")
+    res["informante"] = quien
+    res["explicacion_total"] = (f"Suma de las 18 preguntas de TDAH (0–54). Contestó: "
+                                f"{'maestro(a)' if quien == 'maestro' else 'papá, mamá o tutor'}; corte para "
+                                f"ese informante: promedio {cortes['TDAH']:.2f} = {corte_tdah} puntos.")
+    arriba, notas = [], []
+    for g, nombre, a, b in _SNAP_GRUPOS:
+        grupo = v[a:b]
+        prom = sum(grupo) / len(grupo)
+        presentes = sum(1 for x in grupo if x >= 2)       # «Bastante» o «Mucho»
+        res["subescalas"].append({"nombre": nombre, "puntos": sum(grupo), "maximo": 3 * len(grupo),
+                                  "texto": f"prom. {prom:.2f} (corte {cortes[g]:.2f})"})
+        if prom >= cortes[g]:
+            arriba.append(g)
+        notas.append(f"{nombre}: promedio {prom:.2f} (corte {cortes[g]:.2f}), {presentes} de {len(grupo)} "
+                     f"conductas en «Bastante» o «Mucho».")
+        res[f"sintomas_{g}"] = presentes
+    if ("D" in arriba or "H" in arriba) and not res["positivo"]:
+        res["positivo"] = True
+        res["recomendacion"] = ("Uno de los grupos de TDAH pasa su corte aunque la suma total no: conviene "
+                                "una evaluación con un paidopsiquiatra, neuropediatra o psicólogo infantil.")
+    if "O" in arriba:
+        res["alertas"].append("El oposicionismo (enojo, desafío, discusiones) pasa el corte. Suele acompañar "
+                              "al TDAH; coméntenlo también en la evaluación.")
+    d, h = res["sintomas_D"], res["sintomas_H"]
+    if d >= 6 or h >= 6:
+        tipo = ("combinada" if d >= 6 and h >= 6 else "predominantemente con desatención" if d >= 6
+                else "predominantemente hiperactiva/impulsiva")
+        notas.append(f"Hay 6 o más conductas frecuentes en un grupo (criterio de síntomas del DSM para niños): "
+                     f"se parece a la presentación {tipo}. Solo un profesional puede confirmarlo.")
+    if edad >= 18 or edad < 6:
+        res["alertas"].append(f"El SNAP-IV está hecho para niños y adolescentes de 6 a 17 años; con "
+                              f"{edad:.0f} años el resultado no aplica bien.")
+    res["notas"] = notas
+    res["resumen"] = f"SNAP-IV {suma_tdah}/54 · {res['nivel']}" + (" · oposicionismo" if "O" in arriba else "")
+    return res
+
+
+SNAP_IV = Cuestionario(
+    "snap", "SNAP-IV (TDAH en niños)",
+    "Escala de Swanson, Nolan y Pelham (SNAP-IV-26, uso libre) para niños y adolescentes de 6 a 17 años. "
+    "La contesta un adulto que lo conozca bien (papá, mamá, tutor o maestro). Mide desatención, "
+    "hiperactividad/impulsividad y oposicionismo. Elige a la persona del NIÑO antes de empezar. 6 minutos.",
+    "likert", ["¿Quién contesta este cuestionario?"] + SNAP_PREGUNTAS, _snap, edad_min=6, minutos=6,
+    aviso="Lo contesta un adulto que conozca bien al niño o adolescente, pensando en cómo se ha comportado "
+          "en los últimos 6 meses.",
+    opciones=SNAP_ESCALA, opciones_item={0: SNAP_INFORMANTE}, categoria="salud", edad_max=17, informante=True)
 
 
 # ------------------------------------------------------------------ AUDIT (alcohol)
@@ -279,4 +426,4 @@ PCL5 = Cuestionario(
     opciones=INTENSIDAD, categoria="salud")
 
 
-TAMIZAJES = [PHQ9, GAD7, ASRS, AUDIT, PCL5]
+TAMIZAJES = [PHQ9, GAD7, ASRS, SNAP_IV, AUDIT, PCL5]

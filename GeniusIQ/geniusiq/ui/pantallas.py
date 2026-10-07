@@ -212,7 +212,8 @@ class PantallaInicio(QWidget):
         if tipo in ("pers", "salud"):
             self.det_nombre.setText(b.nombre)
             self.det_desc.setText(b.descripcion)
-            self.det_edad.setText(f"Desde {b.edad_min} años")
+            self.det_edad.setText(f"De {b.edad_min} a {b.edad_max} años" if b.edad_max < 120
+                                  else f"Desde {b.edad_min} años")
             self._actualizar()
             return
         self.det_nombre.setText(b.nombre)
@@ -247,6 +248,8 @@ class PantallaInicio(QWidget):
                     avisos.append(AVISO_REVISION)
             if persona is not None and edad(persona["nacimiento"]) < b.edad_min:
                 avisos.append(f"Este cuestionario es para personas de {b.edad_min} años o más.")
+            elif persona is not None and int(edad(persona["nacimiento"])) > b.edad_max:
+                avisos.append(f"Este cuestionario es para personas de {b.edad_min} a {b.edad_max} años.")
             alerta = "\n\n".join(avisos)
             self.det_alerta.setText(alerta)
             self.det_alerta.setVisible(bool(alerta))
@@ -283,11 +286,16 @@ class PantallaInicio(QWidget):
         if not REVISADO:
             texto.append(AVISO_REVISION)
         e = edad(self._persona()["nacimiento"])
-        if e < 18:
+        nombre = self._persona()["nombre"]
+        if b.informante:
+            texto.append(f"Lo contesta un adulto (papá, mamá, tutor o maestro) pensando en {nombre}; el "
+                         "resultado se guarda a nombre de " + nombre + ".")
+        elif e < 18:
             texto.append("Es menor de edad: que lo conteste acompañado(a) de un adulto de confianza, y que ese "
                          "adulto vea el resultado.")
-        if e < b.edad_min:
-            texto.append(f"Ojo: este cuestionario está hecho para {b.edad_min} años o más.")
+        if e < b.edad_min or int(e) > b.edad_max:
+            rango = f"de {b.edad_min} a {b.edad_max} años" if b.edad_max < 120 else f"de {b.edad_min} años o más"
+            texto.append(f"Ojo: este cuestionario está hecho para personas {rango}.")
         texto.append("Las respuestas quedan guardadas en el historial de esta computadora. ¿Continuar?")
         r = QMessageBox.question(self, b.nombre, "\n\n".join(texto))
         return r == QMessageBox.StandardButton.Yes
