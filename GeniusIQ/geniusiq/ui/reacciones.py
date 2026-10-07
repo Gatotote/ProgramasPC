@@ -16,7 +16,7 @@ from .. import emociones
 from .estilo import SUAVE, TEXTO
 
 COLORES = {"Enojo": "#e5484d", "Desprecio": "#a06cd5", "Asco": "#8a9a3b", "Miedo": "#6e56cf",
-           "Alegría": "#f5c518", "Neutral": "#6b6b70", "Tristeza": "#3e8ed0", "Sorpresa": "#2ec4b6"}
+           "Alegría": "#f5c518", "Neutral": "#6b6b70", "Tristeza": "#3e8ed0", "Sorpresa": "#2ec4b6", "Habitual": "#45454b"}
 SIN_CARA = "#26262a"
 
 
@@ -78,7 +78,7 @@ def analizar_con_dialogo(parent: QWidget, grabacion: dict) -> bool:
 # ------------------------------------------------------------------ gráficas
 
 class LineaTiempo(QWidget):
-    """Una franja: cada segundo pintado con la emoción principal; rayitas donde empieza cada parte."""
+    """Una franja: cada segundo pintado con la emoción que subió (gris = cara habitual); rayitas en cada parte."""
 
     def __init__(self, resumen: dict, eventos: list[dict]):
         super().__init__()
@@ -93,9 +93,10 @@ class LineaTiempo(QWidget):
         franja = QRectF(0, 4, ancho, 34)
         p.fillRect(franja, QColor(SIN_CARA))
         for s, k in enumerate(self.linea):
-            if k >= 0:
+            if k != -1:
+                nombre = "Habitual" if k == emociones.HABITUAL else emociones.EMOCIONES[k]
                 p.fillRect(QRectF(s / n * ancho, franja.top(), ancho / n + 0.6, franja.height()),
-                           QColor(COLORES[emociones.EMOCIONES[k]]))
+                           QColor(COLORES[nombre]))
         p.setPen(QColor(TEXTO))
         for t in self.cortes:
             x = t / n * ancho
@@ -114,7 +115,8 @@ class LineaTiempo(QWidget):
 class Leyenda(QWidget):
     def __init__(self, porcentajes: dict):
         super().__init__()
-        self.datos = sorted(porcentajes.items(), key=lambda kv: -kv[1])
+        self.datos = sorted(((k, v) for k, v in porcentajes.items() if v > 0 or k == "Habitual"),
+                            key=lambda kv: -kv[1])
         self.setMinimumHeight(26)
 
     def paintEvent(self, _):
@@ -135,7 +137,7 @@ class Leyenda(QWidget):
 def _tabla_tramos(tramos: list[dict]) -> QTableWidget:
     tabla = QTableWidget(len(tramos), 5)
     tabla.setHorizontalHeaderLabels(["Momento", "Parte / pregunta", "Respuesta", "Expresión principal",
-                                     "Reacción notable"])
+                                     "Cambio vs. su cara habitual"])
     tabla.verticalHeader().hide()
     tabla.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
     tabla.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
@@ -147,7 +149,7 @@ def _tabla_tramos(tramos: list[dict]) -> QTableWidget:
         if tr["correcta"] is not None:
             resp = "✓ correcta" if tr["correcta"] else "✗ incorrecta"
         emocion = tr.get("emocion", "— (no se vio la cara)")
-        reaccion = f"{tr['reaccion']} ({tr['fuerza'] * 100:.0f}%)" if tr.get("reaccion") else ""
+        reaccion = f"{tr['reaccion']} ↑ +{tr['puntos'] * 100:.0f} pts" if tr.get("reaccion") else ""
         for j, v in enumerate([_mmss(tr["t0"]), _tramo_texto(tr), resp, emocion, reaccion]):
             celda = QTableWidgetItem(v)
             if j in (3, 4) and v and v.split(" ")[0] in COLORES:
@@ -227,23 +229,37 @@ def tarjeta_reacciones(res: dict, persona: str, guardar: Callable[[dict], None])
     tarjeta, t = _tarjeta()
     t.addWidget(_etiqueta("Reacciones durante la prueba (cámara)", "subtitulo"))
     resumen = g.get("resumen")
+    if resumen and "base" not in resumen:   # analizado antes de v0.5.1: se recalcula con la cara habitual
+        muestras = emociones.cargar_muestras(g["video"])
+        if muestras is not None:
+            resumen = g["resumen"] = emociones.resumir(muestras, g["eventos"])
+            guardar(res)
     existe = Path(g["video"]).exists()
     botones = QHBoxLayout()
 
     if resumen:
         t.addWidget(_etiqueta(f"Duración {_mmss(resumen['duracion'])}  ·  cara visible el {resumen['cara']}% del "
                               f"tiempo  ·  {'con' if g.get('audio') else 'sin'} audio", "suave"))
+        if resumen.get("habitual"):
+            t.addWidget(_etiqueta(f"<b>Cara habitual en esta prueba:</b> {resumen['habitual']}. "
+                                  "La franja solo pinta los momentos en que la expresión se aleja de ella "
+                                  "(gris = sin cambio).", "suave"))
         t.addWidget(LineaTiempo(resumen, g["eventos"]))
         t.addWidget(Leyenda(resumen["distribucion"]))
         for nombre, dist in resumen["comparacion"].items():
             top = [f"{k} {v:g}%" for k, v in sorted(dist.items(), key=lambda kv: -kv[1])[:3] if v > 0]
+            if "base" in resumen and len(top) == 1:
+                top = ["sin cambios en la cara"]
             t.addWidget(_etiqueta(f"<b>{nombre}:</b> " + "  ·  ".join(top)))
         notables = sorted((tr for tr in resumen["tramos"] if tr.get("reaccion")), key=lambda tr: -tr["fuerza"])[:8]
         if notables:
-            t.addWidget(_etiqueta("Reacciones más marcadas (abre el video para verlas):", "suave"))
+            t.addWidget(_etiqueta("Cambios más marcados respecto a su cara habitual (abre el video para verlos):",
+                                  "suave"))
             tabla = _tabla_tramos(sorted(notables, key=lambda tr: tr["t0"]))
             tabla.setMinimumHeight(34 * len(notables) + 36)
             t.addWidget(tabla)
+        elif "base" in resumen:
+            t.addWidget(_etiqueta("No hubo cambios notables en la expresión durante la prueba.", "suave"))
         t.addWidget(_etiqueta(emociones.AVISO, "aviso"))
     else:
         t.addWidget(_etiqueta("El video se grabó pero aún no se analizan las reacciones.", "suave"))

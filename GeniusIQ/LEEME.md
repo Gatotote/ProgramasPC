@@ -101,8 +101,13 @@ apagada por defecto). Casilla aparte **«🎙 También audio»** (por defecto so
   HSEmotion `enet_b2_8` (8 expresiones: enojo, desprecio, asco, miedo, alegría, neutral, tristeza, sorpresa;
   63 % de acierto en AffectNet-8, el más preciso de los gratuitos). Solo procesador: ~6 min por cada hora de
   prueba (por cara: ~9 ms YuNet + ~22 ms HSEmotion; decodificar el video casi no cuenta); se puede dejar «para después» y hacerlo desde el resultado.
-- En el resultado: línea de tiempo de emociones, % de cada una, comparación al acertar vs. al fallar, las
-  reacciones más marcadas y **«Ver video por momentos»** (clic en una pregunta → el video salta ahí).
+- **Cara habitual (v0.5.1):** cada persona tiene su expresión de fondo (la de concentración el modelo la lee
+  como tristeza/asco/enojo). Se toma la mediana de cada emoción en toda la prueba y su variación normal (MAD);
+  solo se marca un segundo si una emoción sube ≥ 2.5 variaciones (≥ 2 en una pregunta completa; piso 0.03 para
+  que una emoción casi en cero no se dispare). Resultados analizados con v0.5.0 se recalculan solos al abrirlos.
+- En el resultado: la cara habitual, línea de tiempo (gris = sin cambio, color = emoción que subió), % de cada
+  cambio, comparación al acertar vs. al fallar, los cambios más marcados y **«Ver video por momentos»** (clic
+  en una pregunta → el video salta ahí).
 - Archivos en `~/Documentos/GeniusIQ/grabaciones/`: el `.mp4`, `.marcas.json` (tiempos) y `.emociones.json`
   (3 muestras por segundo). Si se sale de la prueba sin terminar, se borran. Al borrar un resultado del
   historial pregunta si se borra también el video.

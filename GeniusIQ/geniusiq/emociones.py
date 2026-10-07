@@ -22,9 +22,15 @@ EMOCIONES = ["Enojo", "Desprecio", "Asco", "Miedo", "Alegría", "Neutral", "Tris
 NEUTRAL = EMOCIONES.index("Neutral")
 MUESTRAS_POR_SEG = 3
 CORTES = ("instrucciones", "inicio", "pregunta", "fin")   # tipos de marca que abren un tramo nuevo
+HABITUAL = -2          # en la línea de tiempo: segundo sin cambio respecto a la cara habitual (-1 = sin cara)
+Z_SEGUNDO = 2.5        # cuántas «variaciones normales» debe subir una emoción para marcar ese segundo
+Z_TRAMO = 2.0          # ídem para una pregunta completa (promedia más muestras, así que pide menos)
+PISO = 0.03            # variación mínima supuesta, para que una emoción casi en cero no se dispare por nada
 
 AVISO = ("ℹ La emoción se estima solo por la expresión de la cara (sonrisa, ceño, cejas…), no por lo que la "
-         "persona siente por dentro. Es aproximada: la luz, los lentes o voltear la cara la confunden.")
+         "persona siente por dentro. Cada quien tiene su «cara habitual» (la de concentración suele leerse como "
+         "tristeza, asco o enojo), así que solo se marcan los cambios respecto a ella. Es aproximado: la luz, "
+         "los lentes o voltear la cara lo confunden.")
 
 
 class Analizador:
@@ -98,20 +104,55 @@ def analizar(video: str | Path, progreso: Callable[[float], None] | None = None,
     return muestras
 
 
+def cargar_muestras(video: str | Path) -> list[list] | None:
+    ruta = Path(video).with_suffix(".emociones.json")
+    return json.loads(ruta.read_text())["muestras"] if ruta.exists() else None
+
+
+def _base(muestras: list[list]) -> tuple[np.ndarray, np.ndarray] | None:
+    """Cara habitual de la persona en esta prueba: mediana de cada emoción y su variación normal (MAD)."""
+    con = np.array([m[1:] for m in muestras if len(m) > 1])
+    if not len(con):
+        return None
+    base = np.median(con, axis=0)
+    return base, 1.4826 * np.median(np.abs(con - base), axis=0) + PISO
+
+
+def _cambio(filas: list[list], base, escala) -> tuple[int, float, float] | None:
+    """Emoción que más sube respecto a la cara habitual: (índice, puntaje z, puntos de probabilidad)."""
+    media = _media(filas)
+    if media is None:
+        return None
+    z = (np.array(media) - base) / escala
+    i = int(np.argmax(z))
+    return i, float(z[i]), float(media[i] - base[i])
+
+
 def _media(filas: list[list]) -> list[float] | None:
     con = [m[1:] for m in filas if len(m) > 1]
     return [round(float(v), 4) for v in np.mean(con, axis=0)] if con else None
 
 
-def _porcentajes(filas: list[list]) -> dict:
-    """% del tiempo con cara en que cada emoción fue la principal."""
-    con = [int(np.argmax(m[1:])) for m in filas if len(m) > 1]
-    return {EMOCIONES[i]: round(100 * con.count(i) / len(con), 1) for i in range(len(EMOCIONES))} if con else {}
+def _porcentajes(segundos: list[int]) -> dict:
+    """% de los segundos con cara que fueron cara habitual o cambio hacia cada emoción."""
+    con = [k for k in segundos if k != -1]
+    if not con:
+        return {}
+    pct = {"Habitual": round(100 * con.count(HABITUAL) / len(con), 1)}
+    pct.update({EMOCIONES[i]: round(100 * con.count(i) / len(con), 1) for i in range(len(EMOCIONES))})
+    return pct
 
 
 def resumir(muestras: list[list], eventos: list[dict]) -> dict:
-    """Reparte las muestras en tramos (de una marca a la siguiente) y saca la emoción de cada uno."""
+    """Reparte las muestras en tramos (de una marca a la siguiente) y marca los cambios contra la cara habitual."""
     fin = max([m[0] for m in muestras] + [e["t"] for e in eventos] + [0]) + 0.01
+    base, escala = _base(muestras) or (None, None)
+
+    linea = []   # por segundo: índice de la emoción que subió, HABITUAL, o -1 si no se vio la cara
+    for s in range(int(fin) + 1):
+        c = _cambio([m for m in muestras if s <= m[0] < s + 1], base, escala) if base is not None else None
+        linea.append(-1 if c is None else (c[0] if c[1] >= Z_SEGUNDO else HABITUAL))
+
     cortes = [e for e in eventos if e["tipo"] in CORTES]
     tramos = []
     for k, e in enumerate(cortes):
@@ -127,26 +168,25 @@ def resumir(muestras: list[list], eventos: list[dict]) -> dict:
                  "media": media}
         if media:
             tramo["emocion"] = EMOCIONES[int(np.argmax(media))]
-            otras = [(v, i) for i, v in enumerate(media) if i != NEUTRAL]
-            v, i = max(otras)
-            tramo["reaccion"] = EMOCIONES[i] if v >= 0.25 else ""
-            tramo["fuerza"] = round(v, 2)
+            i, z, puntos = _cambio(dentro, base, escala)
+            tramo["reaccion"] = EMOCIONES[i] if z >= Z_TRAMO else ""
+            tramo["fuerza"] = round(z, 1)
+            tramo["puntos"] = round(puntos, 2)
         tramos.append(tramo)
 
     comparacion = {}
     for clave, nombre in ((True, "Al acertar"), (False, "Al fallar")):
-        filas = [m for tr in tramos if tr["correcta"] is clave for m in muestras if tr["t0"] <= m[0] < tr["t1"]]
-        if filas:
-            comparacion[nombre] = _porcentajes(filas)
+        segs = [linea[s] for tr in tramos if tr["correcta"] is clave
+                for s in range(int(tr["t0"]), min(len(linea), int(np.ceil(tr["t1"]))))]
+        if segs:
+            comparacion[nombre] = _porcentajes(segs)
 
-    linea = []   # emoción principal de cada segundo (-1 = no se vio la cara)
-    for s in range(int(fin) + 1):
-        media = _media([m for m in muestras if s <= m[0] < s + 1])
-        linea.append(int(np.argmax(media)) if media else -1)
-
+    habitual = sorted(enumerate(base), key=lambda kv: -kv[1])[:2] if base is not None else []
     return {"modelo": NOMBRE_MODELO, "duracion": round(fin, 1),
             "cara": round(100 * sum(len(m) > 1 for m in muestras) / len(muestras)) if muestras else 0,
-            "distribucion": _porcentajes(muestras), "comparacion": comparacion, "linea": linea,
+            "base": [round(float(v), 4) for v in base] if base is not None else None,
+            "habitual": "  ·  ".join(f"{EMOCIONES[i]} {v * 100:.0f}%" for i, v in habitual if v >= 0.05),
+            "distribucion": _porcentajes(linea), "comparacion": comparacion, "linea": linea,
             "tramos": tramos}
 
 
