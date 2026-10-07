@@ -88,6 +88,10 @@ dificultad controlado. Las verbales salen de bancos fijos en `geniusiq/generador
 
 Las velocidades (búsqueda, claves) usan aciertos − errores contra una media supuesta.
 
+## Revisión profesional
+
+La ficha técnica para psicólogos/psiquiatras está en `docs/`: `GeniusIQ - Ficha tecnica para revision.pdf` (para enviar) y `ficha-tecnica-revision.md` (editable).
+
 ## Archivos
 
 - `geniusiq/irt.py` — modelo estadístico y normas por edad.
