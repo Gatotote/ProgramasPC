@@ -12,7 +12,9 @@ from PySide6.QtWidgets import (QFrame, QHBoxLayout, QProgressBar, QPushButton, Q
 from ..personalidad import Cuestionario
 from ..salud import AVISO_SALUD, CRISIS
 from .estilo import ACENTO, ACENTO_CLARO, BORDE, SUAVE, TEXTO
+from .. import grabacion
 from .pantallas import _etiqueta, _tarjeta, pie_autor
+from .reacciones import tarjeta_reacciones
 
 AVISO_PERSONALIDAD = ("ℹ Las pruebas de personalidad describen preferencias y estilos; no hay resultados "
                       "buenos ni malos y no son un diagnóstico psicológico.")
@@ -121,6 +123,7 @@ class PantallaCuestionario(QWidget):
         else:
             self.pregunta.setText(p)
         self.progreso.setText(f"Pregunta {self.i + 1} de {len(self.c.preguntas)}")
+        grabacion.marcar("pregunta", f"Pregunta {self.i + 1}: " + (" / ".join(p) if self.c.tipo == "bipolar" else p))
         self.ayuda.setText(f"Puedes contestar con las teclas 1 a {len(self.c.opciones_de(self.i))}.")
         self.barra.setValue(self.i)
         marcada = self.respuestas[self.i]
@@ -140,6 +143,7 @@ class PantallaCuestionario(QWidget):
 
     def _responder(self, v: int) -> None:
         self.respuestas[self.i] = v
+        grabacion.marcar("respuesta", f"{v}. {self.opciones[v - 1]}")
         if self.i + 1 >= len(self.c.preguntas):
             self.terminado.emit(list(self.respuestas))
             return
@@ -295,6 +299,11 @@ class PantallaPerfil(QWidget):
         ok.clicked.connect(self.volver.emit)
         fila.addWidget(ok)
         lay.addLayout(fila)
+        self.guardar_resultado = None   # lo pone la ventana: guarda un resultado ya existente
+
+    def _guardar(self, res: dict, persona: str, fecha: str) -> None:
+        self.guardar_resultado(res)
+        self.mostrar(res, persona, fecha)
 
     def mostrar(self, res: dict, persona: str, fecha: str) -> None:
         cont = QWidget()
@@ -309,6 +318,8 @@ class PantallaPerfil(QWidget):
         else:
             {"bigfive": self._bigfive, "hexaco": self._bigfive, "tipos16": self._tipos16,
              "eneagrama": self._eneagrama, "laboral": self._laboral, "valores": self._valores}[res["prueba"]](res, lay)
+        if res.get("grabacion"):
+            lay.addWidget(tarjeta_reacciones(res, persona, lambda r: self._guardar(r, persona, fecha)))
         lay.addWidget(_etiqueta(AVISO_SALUD if salud else AVISO_PERSONALIDAD, "aviso"))
         lay.addWidget(pie_autor())
         lay.addStretch()

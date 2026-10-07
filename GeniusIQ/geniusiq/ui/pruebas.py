@@ -16,7 +16,7 @@ from PySide6.QtGui import QColor, QFont, QPainter, QPen
 from PySide6.QtWidgets import (QAbstractButton, QGridLayout, QHBoxLayout, QLabel, QLineEdit,
                                QPushButton, QSizePolicy, QVBoxLayout, QWidget)
 
-from .. import irt
+from .. import grabacion, irt
 from ..generadores import Item
 from .estilo import ACENTO, TINTA
 
@@ -209,11 +209,13 @@ class PruebaItems(QWidget):
         self.t0 = time.monotonic()
         tope = min(sp.max_items, len(self.respuestas) + len(self.items) - self.i)
         self.progreso.emit(f"Pregunta {len(self.respuestas) + 1} de {tope} como máximo")
+        grabacion.marcar("pregunta", f"{sp.nombre} · pregunta {len(self.respuestas) + 1}: {self.items[self.i].pregunta}")
         self._tic()
 
     def _responder(self, ok: bool) -> None:
         it = self.items[self.i]
         self.respuestas.append((it.a, it.b, it.c, bool(ok)))
+        grabacion.marcar("respuesta", "correcta" if ok else "incorrecta", ok=bool(ok))
         self.errores_seguidos = 0 if ok else self.errores_seguidos + 1
         self.i += 1
         self._mostrar()
@@ -305,6 +307,7 @@ class PruebaDigitos(QWidget):
         self.entrada.hide()
         self.instr.setText("Pon atención…")
         self.progreso.emit(f"Parte {self.parte + 1} de 2 · {self.longitud} números")
+        grabacion.marcar("pregunta", f"Dígitos {self.partes[self.parte][0]} · {self.longitud} números")
         t = 900
         for d in self.secuencia:
             QTimer.singleShot(t, self, lambda d=d: self.numero.setText(d))
@@ -328,6 +331,7 @@ class PruebaDigitos(QWidget):
         esperado = self.secuencia if tipo == "directo" else self.secuencia[::-1]
         ok = texto == esperado
         self.respuestas.append((1.8, irt.b_span(tipo, self.longitud), 0.0, ok))
+        grabacion.marcar("respuesta", "correcta" if ok else "incorrecta", ok=ok)
         if ok:
             self.span[tipo] = max(self.span[tipo], self.longitud)
         else:
@@ -434,6 +438,7 @@ class PruebaCorsi(QWidget):
         self.tablero.activo = False
         self.instr.setText("Pon atención…")
         self.progreso.emit(f"Secuencia de {self.longitud} cuadros")
+        grabacion.marcar("pregunta", f"Cubos de Corsi · secuencia de {self.longitud} cuadros")
         t = 700
         for b in self.secuencia:
             QTimer.singleShot(t, self, lambda b=b: self._encender(b))
@@ -457,6 +462,7 @@ class PruebaCorsi(QWidget):
         self.tablero.activo = False
         ok = self.clics == self.secuencia
         self.respuestas.append((1.8, irt.b_span("corsi", self.longitud), 0.0, ok))
+        grabacion.marcar("respuesta", "correcta" if ok else "incorrecta", ok=ok)
         if ok:
             self.span = max(self.span, self.longitud)
         else:
@@ -507,6 +513,7 @@ class _PruebaCronometrada(QWidget):
 
     def _marcar(self, ok: bool) -> None:
         if self.tic.isActive():
+            grabacion.marcar("respuesta", "correcta" if ok else "incorrecta", ok=ok)
             if ok:
                 self.aciertos += 1
             else:

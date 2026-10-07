@@ -88,6 +88,28 @@ dificultad controlado. Las verbales salen de bancos fijos en `geniusiq/generador
 
 Las velocidades (búsqueda, claves) usan aciertos − errores contra una media supuesta.
 
+## Grabar reacciones (desde v0.5.0)
+
+Casilla **«🎥 Grabar reacciones con la cámara»** en la pantalla de inicio (sirve para cualquier prueba;
+apagada por defecto). Casilla aparte **«🎙 También audio»** (por defecto solo video).
+
+- Antes de empezar pide permiso (y, si es menor de edad, que esté de acuerdo un adulto). Mientras graba se ve
+  **«● Grabando cámara»** abajo a la derecha.
+- Se anota el segundo exacto del video en que aparece cada instrucción, subprueba y pregunta, y cada respuesta
+  (correcta/incorrecta en CI; la opción elegida en cuestionarios).
+- Al terminar, se analiza el video **en esta computadora** (sin internet): cara con YuNet y expresión con
+  HSEmotion `enet_b2_8` (8 expresiones: enojo, desprecio, asco, miedo, alegría, neutral, tristeza, sorpresa;
+  63 % de acierto en AffectNet-8, el más preciso de los gratuitos). Solo procesador: ~6 min por cada hora de
+  prueba (por cara: ~9 ms YuNet + ~22 ms HSEmotion; decodificar el video casi no cuenta); se puede dejar «para después» y hacerlo desde el resultado.
+- En el resultado: línea de tiempo de emociones, % de cada una, comparación al acertar vs. al fallar, las
+  reacciones más marcadas y **«Ver video por momentos»** (clic en una pregunta → el video salta ahí).
+- Archivos en `~/Documentos/GeniusIQ/grabaciones/`: el `.mp4`, `.marcas.json` (tiempos) y `.emociones.json`
+  (3 muestras por segundo). Si se sale de la prueba sin terminar, se borran. Al borrar un resultado del
+  historial pregunta si se borra también el video.
+- Es la **expresión** de la cara, no lo que la persona siente; es aproximado.
+- Modelos en `geniusiq/modelos/`: `enet_b2_8.onnx` (HSEmotion, A. Savchenko, Apache 2.0) y
+  `face_detection_yunet_2023mar.onnx` (OpenCV Zoo, MIT).
+
 ## Revisión profesional
 
 La ficha técnica para psicólogos/psiquiatras está en `docs/`: `GeniusIQ - Ficha tecnica para revision.pdf` (para enviar) y `ficha-tecnica-revision.md` (editable).
@@ -100,6 +122,7 @@ La ficha técnica para psicólogos/psiquiatras está en `docs/`: `GeniusIQ - Fic
 - `geniusiq/figuras.py` — dibujo de figuras (QPainter).
 - `geniusiq/personalidad/` — cuestionarios de personalidad y su calificación (`factores.py`: común a Big Five y HEXACO).
 - `geniusiq/salud/` — tamizajes de salud mental (`tamizajes.py`) y avisos de crisis.
-- `geniusiq/ui/` — interfaz.
+- `geniusiq/grabacion.py` — cámara y marcas de tiempo; `geniusiq/emociones.py` — análisis del video.
+- `geniusiq/ui/` — interfaz (`reacciones.py`: tarjeta, línea de tiempo y reproductor).
 - Datos: `~/.local/share/geniusiq/geniusiq.db` (SQLite). La variable `GENIUSIQ_DB` cambia la ruta
   (útil para pruebas).

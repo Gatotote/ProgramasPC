@@ -18,6 +18,11 @@ def edad(nacimiento: str, hoy: date | None = None) -> float:
     return ((hoy or date.today()) - date.fromisoformat(nacimiento)).days / 365.25
 
 
+def _json(resultado: dict) -> str:
+    """El resultado sin las llaves de uso interno (las que empiezan con «_», como _id)."""
+    return json.dumps({k: v for k, v in resultado.items() if not k.startswith("_")}, ensure_ascii=False)
+
+
 class BaseDatos:
     def __init__(self, ruta: Path = RUTA):
         ruta.parent.mkdir(parents=True, exist_ok=True)
@@ -47,7 +52,12 @@ class BaseDatos:
             return self.con.execute(
                 "INSERT INTO sesiones (persona_id, fecha, bateria, ci, resultado) VALUES (?, ?, ?, ?, ?)",
                 (persona_id, datetime.now().isoformat(timespec="minutes"), resultado["nombre_bateria"],
-                 ci, json.dumps(resultado, ensure_ascii=False))).lastrowid
+                 ci, _json(resultado))).lastrowid
+
+    def actualizar_resultado(self, sesion_id: int, resultado: dict) -> None:
+        """Reescribe el resultado guardado (p. ej. al añadir el análisis de reacciones)."""
+        with self.con:
+            self.con.execute("UPDATE sesiones SET resultado = ? WHERE id = ?", (_json(resultado), sesion_id))
 
     def sesiones(self) -> list[sqlite3.Row]:
         return self.con.execute("""

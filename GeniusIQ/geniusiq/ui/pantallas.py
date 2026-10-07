@@ -20,6 +20,7 @@ from ..personalidad.catalogo import CUESTIONARIOS
 from ..salud import AVISO_REVISION, AVISO_SALUD, REVISADO
 from ..salud.tamizajes import TAMIZAJES
 from .estilo import ACENTO, BORDE, SUAVE, TEXTO
+from .reacciones import tarjeta_reacciones
 
 ICONO = Path(__file__).resolve().parent.parent / "icono.png"
 
@@ -164,11 +165,21 @@ class PantallaInicio(QWidget):
         botones = QHBoxLayout()
         hist = QPushButton("📋 Historial")
         hist.clicked.connect(self.ver_historial.emit)
+        self.chk_grabar = QCheckBox("🎥 Grabar reacciones con la cámara")
+        self.chk_grabar.setToolTip("Graba la cara durante la prueba y al final estima las emociones pregunta por "
+                                   "pregunta. El video queda en ~/Documentos/GeniusIQ/grabaciones.")
+        self.chk_audio = QCheckBox("🎙 También audio")
+        self.chk_audio.setEnabled(False)
+        self.chk_grabar.toggled.connect(self.chk_audio.setEnabled)
+        self.chk_grabar.toggled.connect(lambda si: si or self.chk_audio.setChecked(False))
         self.btn_comenzar = QPushButton("Comenzar ▶")
         self.btn_comenzar.setObjectName("principal")
         self.btn_comenzar.clicked.connect(self._comenzar)
         botones.addWidget(hist)
         botones.addStretch()
+        botones.addWidget(self.chk_grabar)
+        botones.addWidget(self.chk_audio)
+        botones.addSpacing(16)
         botones.addWidget(self.btn_comenzar)
         lay.addLayout(botones)
         lay.addWidget(pie_autor())
@@ -458,6 +469,11 @@ class PantallaResultados(QWidget):
         fila.addWidget(ok)
         lay.addLayout(fila)
         self.nombre_archivo = "resultado"
+        self.guardar_resultado = None   # lo pone la ventana: guarda un resultado ya existente
+
+    def _guardar(self, res: dict, persona: str, fecha: str) -> None:
+        self.guardar_resultado(res)
+        self.mostrar(res, persona, fecha)
 
     def mostrar(self, res: dict, persona: str, fecha: str) -> None:
         self.nombre_archivo = f"GeniusIQ {persona} {fecha[:10]}"
@@ -513,6 +529,8 @@ class PantallaResultados(QWidget):
         tabla.setMinimumHeight(36 * len(res["subpruebas"]) + 40)
         t.addWidget(tabla)
         lay.addWidget(tarjeta)
+        if res.get("grabacion"):
+            lay.addWidget(tarjeta_reacciones(res, persona, lambda r: self._guardar(r, persona, fecha)))
         lay.addWidget(_etiqueta(AVISO, "aviso"))
         lay.addWidget(pie_autor())
         lay.addStretch()
@@ -580,7 +598,10 @@ class PantallaHistorial(QWidget):
         self.tabla.setRowCount(len(self.filas))
         for i, s in enumerate(self.filas):
             fecha = datetime.fromisoformat(s["fecha"]).strftime("%d/%m/%Y %H:%M")
-            resultado = f"CI {s['ci']}" if s["ci"] is not None else json.loads(s["resultado"]).get("resumen", "")
+            res = json.loads(s["resultado"])
+            resultado = f"CI {s['ci']}" if s["ci"] is not None else res.get("resumen", "")
+            if res.get("grabacion"):
+                resultado = f"🎥 {resultado}"
             for j, v in enumerate([fecha, s["nombre"], s["bateria"], resultado]):
                 self.tabla.setItem(i, j, QTableWidgetItem(v))
 
@@ -591,11 +612,18 @@ class PantallaHistorial(QWidget):
     def _ver(self) -> None:
         s = self._sel()
         if s:
-            self.abrir.emit(json.loads(s["resultado"]), s["nombre"], s["fecha"])
+            self.abrir.emit({**json.loads(s["resultado"]), "_id": s["id"]}, s["nombre"], s["fecha"])
 
     def _borrar(self) -> None:
         s = self._sel()
         if s and QMessageBox.question(self, "Borrar", f"¿Borrar el resultado de {s['nombre']}?") \
                 == QMessageBox.StandardButton.Yes:
+            video = json.loads(s["resultado"]).get("grabacion", {}).get("video")
+            if video and Path(video).exists() and QMessageBox.question(
+                    self, "Borrar", f"Ese resultado tiene video de la cámara:\n{video}\n\n¿Borrar también el video?"
+            ) == QMessageBox.StandardButton.Yes:
+                for ruta in (Path(video), Path(video).with_suffix(".marcas.json"),
+                             Path(video).with_suffix(".emociones.json")):
+                    ruta.unlink(missing_ok=True)
             self.db.borrar_sesion(s["id"])
             self.recargar()
