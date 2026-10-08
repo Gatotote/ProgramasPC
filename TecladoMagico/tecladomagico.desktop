@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Teclado Mágico
+Comment=Para bebés: cada tecla hace aparecer letras, animales, colores y música
+Exec=/home/gatotote/Proyectos/ProgramasPC/TecladoMagico/ejecutar.sh
+Icon=/home/gatotote/Proyectos/ProgramasPC/TecladoMagico/tecladomagico/icono.svg
+Terminal=false
+Categories=Game;KidsGame;Education;
+StartupWMClass=tecladomagico
