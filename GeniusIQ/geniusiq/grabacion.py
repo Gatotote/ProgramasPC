@@ -102,7 +102,7 @@ class Grabadora(QObject):
         _activa = None
         self.base.with_suffix(".marcas.json").write_text(json.dumps(self.eventos, ensure_ascii=False, indent=1))
         if self.grabadora.recorderState() == QMediaRecorder.RecorderState.StoppedState:
-            self.camara.stop()
+            self._soltar_camara()
             al_terminar()
             return
         self._al_terminar = al_terminar
@@ -126,9 +126,19 @@ class Grabadora(QObject):
 
     def _estado(self, estado) -> None:
         if estado == QMediaRecorder.RecorderState.StoppedState and self._al_terminar is not None:
-            self.camara.stop()
+            self._soltar_camara()
             llamar, self._al_terminar = self._al_terminar, None
             llamar()
+
+    def _soltar_camara(self) -> None:
+        """Suelta la cámara de verdad: con solo `stop()` Qt la deja apartada y la siguiente prueba
+        en la misma sesión del programa graba un video vacío («Camera is in use»)."""
+        if self.camara is None:
+            return
+        self.camara.stop()
+        self.sesion.setCamera(None)
+        self.camara.deleteLater()
+        self.camara = None
 
     def datos(self) -> dict:
         """Lo que se guarda junto al resultado de la prueba."""

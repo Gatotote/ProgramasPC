@@ -84,10 +84,19 @@ class Ventana(QMainWindow):
         if QMessageBox.question(self, "Grabar reacciones", "\n\n".join(texto)) != QMessageBox.StandardButton.Yes:
             return False
         self.grabadora = grabacion.Grabadora(persona["nombre"], prueba, audio)
-        self.grabadora.error.connect(lambda txt: self.statusBar().showMessage(f"⚠ Problema con la grabación: {txt}"))
+        self.grabadora.error.connect(self._error_grabacion)
         self.grabadora.iniciar()
         self.statusBar().show()
         return True
+
+    def _error_grabacion(self, txt: str) -> None:
+        self.statusBar().showMessage(f"⚠ Problema con la grabación: {txt}")
+        g = self.sender()
+        if getattr(g, "_avisado", False):
+            return
+        g._avisado = True  # un solo aviso por grabación, para no tapar la prueba
+        QMessageBox.warning(self, "Grabación", f"La cámara no está grabando:\n{txt}\n\n"
+                            "La prueba sigue, pero las reacciones no se podrán analizar.")
 
     def _cancelar_grabacion(self) -> None:
         if self.grabadora is not None:
