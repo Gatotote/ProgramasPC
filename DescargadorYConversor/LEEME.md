@@ -123,3 +123,9 @@ Herramienta de uso general. Descarga solo contenido sobre el que tengas
 derechos (propio, de dominio público, con licencia que lo permita o con permiso
 explícito del sitio). Descargar material protegido sin permiso puede infringir
 los términos del sitio y la ley aplicable.
+
+## Licencia
+
+[MIT](LICENSE) — se puede usar, copiar, modificar y compartir libremente, siempre que se conserve la mención del autor. Este programa fue realizado por **Genaro Velasco**.
+
+Usa PySide6 (LGPL-3.0), yt-dlp (Unlicense), Pillow, pillow-heif, rawpy y numpy; ffmpeg es un programa aparte con su propia licencia (LGPL/GPL). PyInstaller (GPL con excepción) solo se usa para empaquetar y no afecta la licencia del programa.

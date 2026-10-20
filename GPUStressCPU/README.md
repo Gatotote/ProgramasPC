@@ -126,3 +126,9 @@ Cada corrida guarda `sensores.csv` (un renglón por segundo) e `informe.txt`
   porque consultarla la despierta y gasta batería.
 
 Este programa fue realizado por Genaro Velasco.
+
+## Licencia
+
+[MIT](LICENSE) — se puede usar, copiar, modificar y compartir libremente, siempre que se conserve la mención del autor. Este programa fue realizado por **Genaro Velasco**.
+
+Los videos y escenas 3D de prueba que se descargan tienen sus propias licencias (ver arriba). Dependencias: PySide6 (LGPL-3.0), moderngl (MIT), pyopencl (MIT), pyqtgraph (MIT), numpy (BSD).

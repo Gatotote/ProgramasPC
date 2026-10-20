@@ -40,3 +40,9 @@ uv pip install --python .venv -r requirements.txt
 El icono se edita en `assets/icono.svg` (Inkscape). `generar_icono.py` lo
 rasteriza a `assets/icono.png` 256x256 (requiere `rsvg-convert` o `inkscape`,
 no son dependencia de la app).
+
+## Licencia
+
+[MIT](LICENSE) — se puede usar, copiar, modificar y compartir libremente, siempre que se conserve la mención del autor. Este programa fue realizado por **Genaro Velasco**.
+
+Dependencias: PySide6 (LGPL-3.0).

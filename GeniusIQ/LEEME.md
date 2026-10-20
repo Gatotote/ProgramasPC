@@ -131,3 +131,9 @@ La ficha técnica para psicólogos/psiquiatras está en `docs/`: `GeniusIQ - Fic
 - `geniusiq/ui/` — interfaz (`reacciones.py`: tarjeta, línea de tiempo y reproductor).
 - Datos: `~/.local/share/geniusiq/geniusiq.db` (SQLite). La variable `GENIUSIQ_DB` cambia la ruta
   (útil para pruebas).
+
+## Licencia
+
+[MIT](LICENSE) — se puede usar, copiar, modificar y compartir libremente, siempre que se conserve la mención del autor. Este programa fue realizado por **Genaro Velasco**.
+
+La licencia MIT cubre el **código** de GeniusIQ. No cubre contenido de terceros: los cuestionarios y escalas (PHQ-9, GAD-7, ASRS, AUDIT, PCL-5, SNAP-IV, HEXACO, etc.) y las pruebas en las que se inspiran las baterías (WAIS, WISC, Stanford-Binet…) conservan los derechos y condiciones de uso de sus autores; revisarlos antes de publicar o usar comercialmente. Los modelos `modelos/*.onnx` (YuNet de OpenCV Zoo y el de emociones) tienen sus propias licencias. Dependencias: PySide6 (LGPL-3.0), OpenCV (Apache-2.0), onnxruntime (MIT), numpy (BSD).

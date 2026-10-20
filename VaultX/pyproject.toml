@@ -1,6 +1,7 @@
 [project]
 name = "bovedafacial"
 version = "0.2.0"
+license = "MIT"
 description = "Bóveda de carpetas cifrada con desbloqueo por reconocimiento facial (InsightFace/ArcFace) + PIN"
 requires-python = ">=3.13"
 dependencies = [

@@ -45,3 +45,9 @@ Lanzador: `tecladomagico.desktop` (copiado al Escritorio).
 Sin imágenes: todo se dibuja (emojis de Noto Color Emoji). Las notas se sintetizan; la voz son
 WAV en `tecladomagico/voz/` hechos con Piper (voz `es_MX-claude-high`, sin internet) por
 `herramientas/generar_voz.py` — el modelo se baja a `herramientas/modelos/` (no va al repo).
+
+## Licencia
+
+[MIT](LICENSE) — se puede usar, copiar, modificar y compartir libremente, siempre que se conserve la mención del autor. Este programa fue realizado por **Genaro Velasco**.
+
+Dependencias: pygame-ce (LGPL-2.1) y numpy (BSD). Las voces de Piper tienen cada una su propia licencia (ver la ficha de cada voz) y piper-tts solo se usa para generarlas.

@@ -15,3 +15,7 @@ subcarpeta con su propio `README`/`LEEME`, su `.venv` y su lanzador.
 El historial de cada programa se conserva: se integró con *subtree merge*
 (`git log -- <carpeta>/` o `git log --all` muestran los commits originales).
 Solo local, sin remoto.
+
+## Licencia
+
+Todo el repositorio es [MIT](LICENSE) (cada programa lleva también su copia de `LICENSE`): se puede usar, copiar, modificar y compartir libremente, siempre que se conserve la mención del autor, **Genaro Velasco**. Lo que es de terceros (modelos de IA, voces, videos, cuestionarios y escalas psicológicas, dependencias) conserva su propia licencia; cada README lo detalla.

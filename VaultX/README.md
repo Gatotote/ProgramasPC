@@ -188,3 +188,9 @@ src/bovedafacial/
   ui/               Fase 4  (uv sync --extra gui)
 scripts/face_smoke.py   prueba manual del motor con la webcam
 ```
+
+## Licencia
+
+[MIT](LICENSE) — se puede usar, copiar, modificar y compartir libremente, siempre que se conserve la mención del autor. Este programa fue realizado por **Genaro Velasco**.
+
+Dependencias: cryptography (Apache-2.0/BSD), argon2-cffi (MIT), mnemonic (MIT), click (BSD), platformdirs (MIT) y PySide6 (LGPL-3.0). **Ojo con el motor facial (`--extra face`):** los modelos preentrenados de InsightFace son solo para uso **no comercial** (investigación); la licencia MIT de VaultX no cambia eso.
