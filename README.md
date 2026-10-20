@@ -14,7 +14,7 @@ subcarpeta con su propio `README`/`LEEME`, su `.venv` y su lanzador.
 
 El historial de cada programa se conserva: se integró con *subtree merge*
 (`git log -- <carpeta>/` o `git log --all` muestran los commits originales).
-Solo local, sin remoto.
+Código en GitHub: https://github.com/Gatotote/ProgramasPC (público).
 
 ## Licencia
 
