@@ -7,6 +7,7 @@ from pathlib import Path
 
 from PySide6.QtCore import Qt, QThread, QTimer, Signal
 from PySide6.QtWidgets import (
+    QCheckBox,
     QHBoxLayout,
     QLabel,
     QLineEdit,
@@ -94,6 +95,9 @@ class UnlockWindow(QWidget):
         self.field.setPlaceholderText("PIN")
         self.field.returnPressed.connect(self._go)
 
+        self.show_pin = QCheckBox("Mostrar PIN")
+        self.show_pin.toggled.connect(self._apply_echo)
+
         self.enter = QPushButton("Entrar")
         self.enter.setObjectName("primary")
         self.enter.clicked.connect(self._go)
@@ -116,6 +120,7 @@ class UnlockWindow(QWidget):
         right.addWidget(hline())
         right.addStretch(1)
         right.addWidget(self.field)
+        right.addWidget(self.show_pin, 0, Qt.AlignmentFlag.AlignLeft)
         right.addWidget(self.enter)
         right.addWidget(self.switch, 0, Qt.AlignmentFlag.AlignLeft)
         right.addWidget(self.bar)
@@ -153,17 +158,23 @@ class UnlockWindow(QWidget):
     def _toggle_recovery(self) -> None:
         self._recovery = not self._recovery
         if self._recovery:
-            self.field.setEchoMode(QLineEdit.EchoMode.Normal)
             self.field.setPlaceholderText("24 palabras de recuperación")
+            self.show_pin.hide()
             self.switch.setText("Volver al PIN")
             self.video.hide()
         else:
-            self.field.setEchoMode(QLineEdit.EchoMode.Password)
             self.field.setPlaceholderText("PIN")
+            self.show_pin.show()
             self.switch.setText("Usar la frase de recuperación")
             self.video.show()
+        self._apply_echo()
         self.field.clear()
         self._tick_lock()
+
+    def _apply_echo(self, *_args) -> None:
+        visible = self._recovery or self.show_pin.isChecked()
+        self.field.setEchoMode(QLineEdit.EchoMode.Normal if visible
+                               else QLineEdit.EchoMode.Password)
 
     # ---------- go ----------
     def _go(self) -> None:

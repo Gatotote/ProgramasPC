@@ -113,6 +113,12 @@ class SetupWizard(QDialog):
         v.addWidget(self.pin1)
         v.addWidget(_lbl("Confirmación"))
         v.addWidget(self.pin2)
+        self.show_pin = QCheckBox("Mostrar PIN")
+        self.show_pin.toggled.connect(
+            lambda on: [e.setEchoMode(QLineEdit.EchoMode.Normal if on
+                                      else QLineEdit.EchoMode.Password)
+                        for e in (self.pin1, self.pin2)])
+        v.addWidget(self.show_pin)
         v.addWidget(self.pin_hint)
         v.addStretch(1)
         return w

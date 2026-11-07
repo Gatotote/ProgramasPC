@@ -20,7 +20,6 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from ...vault import KIND_LABELS, ItemKind
 from .. import config
 from ..busy import run_busy
 from ..widgets import hline
@@ -81,20 +80,21 @@ class FilesView(QWidget):
         self.info.setText(f"{stor['files']} archivos · {stor['on_disk_bytes'] / 1e6:.1f} MB")
 
     def _add_children(self, node: dict, prefix: str, parent_item) -> None:
+        # Solo archivos: las contraseñas, tarjetas, etc. («item») viven en el mismo
+        # árbol pero tienen sus propias pestañas, así que aquí se omiten, igual que
+        # las carpetas que solo contienen ese tipo de elementos.
         for name, child in sorted(node.get("entries", {}).items(),
                                   key=lambda kv: (kv[1]["type"] != "dir", kv[0].lower())):
             vpath = f"{prefix}/{name}"
             t = child["type"]
+            if t == "item":
+                continue
             if t == "dir":
+                if _solo_elementos(child):
+                    continue
                 it = QTreeWidgetItem(parent_item, [f"📁  {name}", ""])
                 it.setData(0, _TYPE_ROLE, "dir")
                 self._add_children(child, vpath, it)
-            elif t == "item":
-                kind = ItemKind(child["kind"])
-                sz = sum(a.get("size", 0) for a in child.get("attachments", []))
-                it = QTreeWidgetItem(parent_item,
-                                     [f"🗂  {name}  ({KIND_LABELS[kind]})", _hsize(sz)])
-                it.setData(0, _TYPE_ROLE, "item")
             else:
                 it = QTreeWidgetItem(parent_item, [f"📄  {name}", _hsize(child.get("size", 0))])
                 it.setData(0, _TYPE_ROLE, "file")
@@ -208,6 +208,25 @@ class FilesView(QWidget):
             QMessageBox.warning(self, "Eliminar", str(e))
             return
         self.refresh()
+
+
+def _solo_elementos(node: dict) -> bool:
+    """True si la carpeta tiene contenido pero ningún archivo (solo contraseñas,
+    tarjetas, etc., en ella o en sus subcarpetas). Las carpetas vacías sí se muestran."""
+    entries = node.get("entries", {})
+    if not entries:
+        return False
+
+    def tiene_archivos(n: dict) -> bool:
+        for c in n.get("entries", {}).values():
+            if c["type"] == "dir":
+                if tiene_archivos(c):
+                    return True
+            elif c["type"] != "item":
+                return True
+        return False
+
+    return not tiene_archivos(node)
 
 
 def _hsize(n: int) -> str:
